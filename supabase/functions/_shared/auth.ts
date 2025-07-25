@@ -2,10 +2,9 @@
 // Authentication Middleware and Utilities
 // ============================================================================
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import type { Logger } from './logger.ts';
 import { logError, logSecurityEvent } from './logger.ts';
-import { getRemoteConfigValue } from './firebase-admin.ts';
 import { createSecurityEvent } from './database.ts';
 import type { AuthRemoteConfig, UserProfile } from './types.ts';
 
@@ -130,34 +129,22 @@ export async function verifyAuthToken(
 }
 
 // ============================================================================
-// Firebase Remote Config 인증 설정 로드
+// 정적 인증 설정 로드
 // ============================================================================
 
 export async function loadAuthConfig(logger: Logger): Promise<AuthRemoteConfig> {
   try {
-    const [
-      authMethodsEnabled,
-      socialLoginRequired,
-      guestModeEnabled,
-      passwordMinLength,
-      sessionTimeoutMinutes,
-      maxLoginAttempts,
-      autoSyncEnabled,
-      offlineModeEnabled,
-      minAppVersionForAuth,
-      deprecatedAuthNotice
-    ] = await Promise.all([
-      getRemoteConfigValue(logger, 'auth_methods_enabled'),
-      getRemoteConfigValue(logger, 'social_login_required'),
-      getRemoteConfigValue(logger, 'guest_mode_enabled'),
-      getRemoteConfigValue(logger, 'password_min_length'),
-      getRemoteConfigValue(logger, 'session_timeout_minutes'),
-      getRemoteConfigValue(logger, 'max_login_attempts'),
-      getRemoteConfigValue(logger, 'auto_sync_enabled'),
-      getRemoteConfigValue(logger, 'offline_mode_enabled'),
-      getRemoteConfigValue(logger, 'min_app_version_for_auth'),
-      getRemoteConfigValue(logger, 'deprecated_auth_notice')
-    ]);
+    // 기본 정적 설정값 사용
+    const authMethodsEnabled = 'email,google,apple';
+    const socialLoginRequired = 'false';
+    const guestModeEnabled = 'true';
+    const passwordMinLength = '8';
+    const sessionTimeoutMinutes = '60';
+    const maxLoginAttempts = '5';
+    const autoSyncEnabled = 'true';
+    const offlineModeEnabled = 'true';
+    const minAppVersionForAuth = '1.0.0';
+    const deprecatedAuthNotice = '앱을 최신 버전으로 업데이트해 주세요.';
 
     return {
       auth_methods_enabled: authMethodsEnabled || 'email,google,apple',

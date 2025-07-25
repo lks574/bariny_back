@@ -95,18 +95,10 @@ export interface AuthRemoteConfig {
 }
 
 // ============================================================================
-// Firebase Remote Config Types
+// Static Configuration Types
 // ============================================================================
 
-export interface FirebaseRemoteConfigSettings {
-  quiz_version: string;
-  download_url: string;
-  categories: string;
-  force_update: string;
-  maintenance_mode: string;
-  min_app_version: string;
-  feature_flags: string;
-}
+// Static configuration (no Firebase dependency)
 
 // ============================================================================
 // Quiz Data Types
@@ -335,7 +327,6 @@ export interface HealthCheck {
     database: ServiceHealth;
     auth: ServiceHealth;
     storage: ServiceHealth;
-    firebase: ServiceHealth;
     openai: ServiceHealth;
   };
   total_response_time: number;
@@ -398,7 +389,6 @@ export enum ErrorCodes {
   SYNC_CONFLICT = 'SYNC_CONFLICT',
   
   // External Services
-  FIREBASE_ERROR = 'FIREBASE_ERROR',
   AI_SERVICE_ERROR = 'AI_SERVICE_ERROR',
   STORAGE_ERROR = 'STORAGE_ERROR'
 }

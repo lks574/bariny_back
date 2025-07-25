@@ -8,19 +8,19 @@ Brainy Backend API는 iOS 퀴즈 앱을 지원하는 백엔드 시스템입니�
 
 ### Requirement 1
 
-**User Story:** 개발자로서, Firebase Remote Config와 통합된 유연하고 안전한 사용자 인증 시스템을 구축하고 싶습니다. 그래야 iOS 앱에서 다양한 로그인 방식을 지원하고 실시간으로 인증 정책을 조정할 수 있습니다.
+**User Story:** 개발자로서, 안전하고 확장 가능한 사용자 인증 시스템을 구축하고 싶습니다. 그래야 iOS 앱에서 다양한 로그인 방식을 지원하고 정적 설정을 통해 인증 정책을 관리할 수 있습니다.
 
 #### Acceptance Criteria
 
-1. WHEN Firebase Remote Config에서 인증 설정을 확인하면 THEN 시스템은 허용된 로그인 방식과 보안 정책을 실시간으로 반환해야 합니다
-2. WHEN 이메일 로그인 요청이 오면 THEN 시스템은 Remote Config의 설정에 따라 이메일과 비밀번호를 검증하고 JWT 토큰을 반환해야 합니다
+1. WHEN 정적 설정에서 인증 설정을 확인하면 THEN 시스템은 허용된 로그인 방식과 보안 정책을 반환해야 합니다
+2. WHEN 이메일 로그인 요청이 오면 THEN 시스템은 정적 설정에 따라 이메일과 비밀번호를 검증하고 JWT 토큰을 반환해야 합니다
 3. WHEN Google OAuth 토큰이 전달되면 THEN 시스템은 소셜 로그인 허용 여부를 확인하고 사용자 계정을 생성하거나 로그인해야 합니다
 4. WHEN Apple Sign-in 토큰이 전달되면 THEN 시스템은 Apple 인증을 검증하고 사용자 계정을 생성하거나 로그인해야 합니다
-5. WHEN 게스트 로그인 요청이 오면 THEN 시스템은 Remote Config의 게스트 모드 허용 여부를 확인하고 임시 계정을 생성해야 합니다
-6. WHEN 사용자 등록 요청이 오면 THEN 시스템은 이메일 중복을 확인하고 Remote Config의 비밀번호 정책에 따라 새 계정을 생성해야 합니다
+5. WHEN 게스트 로그인 요청이 오면 THEN 시스템은 정적 설정의 게스트 모드 허용 여부를 확인하고 임시 계정을 생성해야 합니다
+6. WHEN 사용자 등록 요청이 오면 THEN 시스템은 이메일 중복을 확인하고 정적 설정의 비밀번호 정책에 따라 새 계정을 생성해야 합니다
 7. WHEN 로그아웃 요청이 오면 THEN 시스템은 토큰을 무효화하고 세션을 종료해야 합니다
 8. WHEN 사용자 정보 요청이 오면 THEN 시스템은 인증된 사용자의 프로필 정보와 권한을 반환해야 합니다
-9. WHEN 세션 만료 시간이 도달하면 THEN 시스템은 Remote Config의 설정에 따라 자동으로 세션을 갱신하거나 로그아웃해야 합니다
+9. WHEN 세션 만료 시간이 도달하면 THEN 시스템은 정적 설정에 따라 자동으로 세션을 갱신하거나 로그아웃해야 합니다
 10. WHEN 앱 버전이 최소 요구 버전보다 낮으면 THEN 시스템은 인증을 거부하고 업데이트 안내를 표시해야 합니다
 11. WHEN 최대 로그인 시도 횟수를 초과하면 THEN 시스템은 계정을 일시적으로 잠그고 보안 로그를 기록해야 합니다
 12. WHEN 비정상적인 로그인 패턴이 감지되면 THEN 시스템은 추가 인증을 요구하고 보안 알림을 발송해야 합니다
@@ -31,14 +31,12 @@ Brainy Backend API는 iOS 퀴즈 앱을 지원하는 백엔드 시스템입니�
 
 #### Acceptance Criteria
 
-1. WHEN Firebase Remote Config에서 퀴즈 버전을 확인하면 THEN 시스템은 현재 퀴즈 데이터 버전과 다운로드 URL을 완전 무료로 반환해야 합니다
-2. WHEN 퀴즈 파일 생성 요청이 오면 THEN 시스템은 DB에서 데이터를 조회하여 JSON 파일을 생성하고 Storage에 업로드해야 합니다
-3. WHEN JSON 파일이 생성되면 THEN 시스템은 공개 다운로드 URL을 반환하고 Firebase Remote Config를 자동으로 업데이트해야 합니다
-4. WHEN 퀴즈 데이터가 업데이트되면 THEN 시스템은 버전 번호를 증가시키고 새 JSON 파일을 생성한 후 Firebase Remote Config에 실시간으로 반영해야 합니다
-5. WHEN 음성 모드 퀴즈가 포함되면 THEN 시스템은 오디오 파일 URL을 JSON에 포함해야 합니다
-6. WHEN 앱에서 JSON 파일을 다운로드하면 THEN 시스템은 CDN을 통해 정적 파일을 제공해야 합니다
-7. WHEN Firebase Remote Config에서 force_update가 true면 THEN 앱은 반드시 새 버전을 다운로드해야 합니다
-8. WHEN Firebase Remote Config에서 maintenance_mode가 true면 THEN 앱은 점검 화면을 표시해야 합니다
+1. WHEN 퀴즈 파일 생성 요청이 오면 THEN 시스템은 DB에서 데이터를 조회하여 JSON 파일을 생성하고 Storage에 업로드해야 합니다
+2. WHEN JSON 파일이 생성되면 THEN 시스템은 공개 다운로드 URL을 반환해야 합니다
+3. WHEN 퀴즈 데이터가 업데이트되면 THEN 시스템은 버전 번호를 증가시키고 새 JSON 파일을 생성해야 합니다
+4. WHEN 음성 모드 퀴즈가 포함되면 THEN 시스템은 오디오 파일 URL을 JSON에 포함해야 합니다
+5. WHEN 앱에서 JSON 파일을 다운로드하면 THEN 시스템은 CDN을 통해 정적 파일을 제공해야 합니다
+6. WHEN 정적 설정에서 maintenance_mode가 true면 THEN 앱은 점검 화면을 표시해야 합니다
 
 ### Requirement 3
 
@@ -116,12 +114,12 @@ Brainy Backend API는 iOS 퀴즈 앱을 지원하는 백엔드 시스템입니�
 
 ### Requirement 9
 
-**User Story:** 개발자로서, 비용 효율적인 버전 체크 시스템을 구축하고 싶습니다. 그래야 API 호출 비용을 최소화하면서도 앱에서 최신 퀴즈 버전을 확인할 수 있습니다.
+**User Story:** 개발자로서, 비용 효율적인 설정 관리 시스템을 구축하고 싶습니다. 그래야 API 호출 비용을 최소화하면서도 앱에서 최신 설정을 확인할 수 있습니다.
 
 #### Acceptance Criteria
 
-1. WHEN Firebase Remote Config를 사용하면 THEN 버전 체크가 완전 무료로 제공되어야 합니다
-2. WHEN Supabase Storage 직접 접근을 사용하면 THEN Edge Function 호출 없이 정적 파일로 버전 정보를 제공해야 합니다  
-3. WHEN GitHub Raw 파일을 사용하면 THEN 무료 CDN을 통해 설정 파일을 제공해야 합니다
-4. WHEN 버전 정보가 캐싱되면 THEN 동일한 버전에 대해서는 추가 요청을 하지 않아야 합니다
-5. WHEN 앱이 오프라인이면 THEN 마지막으로 캐싱된 버전 정보를 사용해야 합니다
+1. WHEN Supabase Storage 직접 접근을 사용하면 THEN Edge Function 호출 없이 정적 파일로 설정 정보를 제공해야 합니다  
+2. WHEN 정적 설정 파일을 사용하면 THEN CDN을 통해 빠르고 저렴하게 설정을 제공해야 합니다
+3. WHEN 설정 정보가 캐싱되면 THEN 동일한 버전에 대해서는 추가 요청을 하지 않아야 합니다
+4. WHEN 앱이 오프라인이면 THEN 마지막으로 캐싱된 설정 정보를 사용해야 합니다
+5. WHEN 설정이 업데이트되면 THEN 새로운 정적 파일이 생성되고 CDN을 통해 배포되어야 합니다

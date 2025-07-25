@@ -45,6 +45,7 @@ Storage: Supabase Storage
 AI: OpenAI API
 Monitoring: Supabase Analytics
 Deployment: Supabase Cloud
+Configuration: Static JSON Files
 ```
 
 ## Components and Interfaces
@@ -59,16 +60,16 @@ Deployment: Supabase Cloud
 │   Updates Data   │    │  (PostgreSQL)    │    │  (quiz_data)     │
 └──────────────────┘    └──────────────────┘    └──────────────────┘
                                                           │
-                        ┌──────────────────┐             ▼
-                        │ Firebase Remote  │    ┌──────────────────┐
-                        │    Config        │◄───│   File Generator │
-                        │ (Version Info)   │    │   (DB → JSON)    │
-                        └──────────────────┘    └──────────────────┘
-                                 │                        │
-                                 ▼                        ▼
+                                                         ▼
+                                            ┌──────────────────┐
+                                            │   File Generator │
+                                            │   (DB → JSON)    │
+                                            └──────────────────┘
+                                                          │
+                                                         ▼
 ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
 │    iOS App       │◄───│ Supabase Storage │◄───│   JSON File      │
-│ (Version Check)  │    │     CDN          │    │   Upload         │
+│ (Direct Access)  │    │     CDN          │    │   Upload         │
 └──────────────────┘    └──────────────────┘    └──────────────────┘
           │
           ▼
@@ -78,19 +79,17 @@ Deployment: Supabase Cloud
 └──────────────────┘
 ```
 
-### Enhanced Cost Optimization Benefits
-- **버전 체크**: Firebase Remote Config로 완전 무료 (100% 절감)
-- **함수 호출**: 데이터 업데이트 시 1회만 (90% 절감) 
+### Cost Optimization Benefits
+- **함수 호출**: 데이터 업데이트 시에만 (90% 절감) 
 - **정적 파일 서빙**: CDN 캐싱으로 빠른 전송
 - **로컬 캐싱**: 앱에서 오프라인 지원
-- **실시간 업데이트**: 앱 재시작 없이 설정 변경 가능
-- **A/B 테스트**: 점진적 롤아웃으로 안전한 배포
+- **직접 다운로드**: Edge Function 호출 없이 정적 파일 다운로드
 
 ### Authentication Service
 
 #### Overview
 - **Primary Auth**: Supabase Auth (이메일, Google, Apple 로그인)
-- **Config Management**: Firebase Remote Config (인증 관련 설정)
+- **Config Management**: Static Configuration (정적 설정)
 - **Session Management**: JWT + RLS (Row Level Security)
 - **User Management**: Supabase PostgreSQL
 
@@ -99,11 +98,8 @@ Deployment: Supabase Cloud
 ┌─────────────────────────────────────────────────────────────┐
 │                    iOS App (Client)                        │
 └─────────────────────┬───────────────────────────────────────┘
-                      │ Auth Request + Firebase Config Check
+                      │ Auth Request + Static Config
 ┌─────────────────────▼───────────────────────────────────────┐
-│               Firebase Remote Config                        │
-│          (Auth Settings & Feature Flags)                    │
-├─────────────────────────────────────────────────────────────┤
 │                 Supabase Auth                               │
 │       (JWT Token, OAuth, User Management)                   │
 ├─────────────────────────────────────────────────────────────┤
@@ -112,10 +108,10 @@ Deployment: Supabase Cloud
 └─────────────────────────────────────────────────────────────┘
 ```
 
-#### Firebase Remote Config for Auth Settings
+#### Static Auth Configuration
 ```typescript
-// 인증 관련 설정값 (Firebase Remote Config)
-interface AuthRemoteConfig {
+// 정적 인증 설정값
+interface AuthStaticConfig {
   // 로그인 방식 제어
   auth_methods_enabled: string;           // "email,google,apple"
   social_login_required: boolean;         // 소셜 로그인 강제 여부
@@ -135,17 +131,22 @@ interface AuthRemoteConfig {
   deprecated_auth_notice: string;         // 구버전 인증 경고 메시지
 }
 
-// iOS 앱에서 인증 설정 확인
-const authConfig = {
-  authMethodsEnabled: getValue(remoteConfig, 'auth_methods_enabled').asString().split(','),
-  socialLoginRequired: getValue(remoteConfig, 'social_login_required').asBoolean(),
-  guestModeEnabled: getValue(remoteConfig, 'guest_mode_enabled').asBoolean(),
-  passwordMinLength: getValue(remoteConfig, 'password_min_length').asNumber(),
-  sessionTimeoutMinutes: getValue(remoteConfig, 'session_timeout_minutes').asNumber(),
+// 정적 설정값 (서버 코드에서 하드코딩)
+const authConfig: AuthStaticConfig = {
+  auth_methods_enabled: "email,google,apple",
+  social_login_required: false,
+  guest_mode_enabled: true,
+  password_min_length: 8,
+  session_timeout_minutes: 60,
+  max_login_attempts: 5,
+  auto_sync_enabled: true,
+  offline_mode_enabled: true,
+  min_app_version_for_auth: "1.0.0",
+  deprecated_auth_notice: "앱을 최신 버전으로 업데이트해 주세요."
 };
 ```
 
-#### Enhanced Authentication Endpoints
+#### Authentication Endpoints
 ```typescript
 // Supabase Auth 기반 엔드포인트
 POST /auth/v1/signup              // 회원가입 (이메일/소셜)
@@ -157,9 +158,6 @@ PUT  /auth/v1/user                // 사용자 정보 업데이트
 POST /auth/v1/password/reset      // 비밀번호 재설정
 POST /auth/v1/guest               // 게스트 로그인
 DELETE /auth/v1/account           // 계정 삭제
-
-// Firebase Remote Config 기반 설정 조회 (무료)
-// GET /auth/config (Firebase Remote Config로 대체됨)
 ```
 
 #### Enhanced Authentication Flow
@@ -218,7 +216,6 @@ interface UserPreferences {
 #### iOS App Auth Implementation
 ```swift
 // AuthManager.swift
-import FirebaseRemoteConfig
 import Supabase
 
 class AuthManager: ObservableObject {
@@ -226,44 +223,28 @@ class AuthManager: ObservableObject {
         supabaseURL: URL(string: Config.supabaseURL)!,
         supabaseKey: Config.supabaseAnonKey
     )
-    private let remoteConfig = RemoteConfig.remoteConfig()
     
     @Published var currentUser: UserProfile?
-    @Published var authConfig: AuthRemoteConfig?
     @Published var isAuthenticated = false
     
-    // 1. 앱 시작 시 Remote Config에서 인증 설정 로드
-    func loadAuthConfig() async {
-        do {
-            try await remoteConfig.fetchAndActivate()
-            
-            self.authConfig = AuthRemoteConfig(
-                authMethodsEnabled: remoteConfig.configValue(forKey: "auth_methods_enabled").stringValue?.components(separatedBy: ",") ?? ["email"],
-                socialLoginRequired: remoteConfig.configValue(forKey: "social_login_required").boolValue,
-                guestModeEnabled: remoteConfig.configValue(forKey: "guest_mode_enabled").boolValue,
-                passwordMinLength: Int(remoteConfig.configValue(forKey: "password_min_length").numberValue?.intValue ?? 8),
-                sessionTimeoutMinutes: Int(remoteConfig.configValue(forKey: "session_timeout_minutes").numberValue?.intValue ?? 60)
-            )
-            
-            // 인증 방식 제한 확인
-            if authConfig?.socialLoginRequired == true {
-                // 소셜 로그인만 허용
-                showSocialLoginOnly()
-            }
-            
-        } catch {
-            print("Auth config 로드 실패: \(error)")
-        }
-    }
+    // 정적 인증 설정 (앱에서 하드코딩)
+    private let authConfig = AuthStaticConfig(
+        authMethodsEnabled: ["email", "google", "apple"],
+        socialLoginRequired: false,
+        guestModeEnabled: true,
+        passwordMinLength: 8,
+        sessionTimeoutMinutes: 60,
+        maxLoginAttempts: 5
+    )
     
-    // 2. 이메일 로그인
+    // 이메일 로그인
     func signInWithEmail(email: String, password: String) async throws -> AuthResponse {
-        // Remote Config 설정 확인
-        guard authConfig?.authMethodsEnabled.contains("email") == true else {
+        // 정적 설정 확인
+        guard authConfig.authMethodsEnabled.contains("email") else {
             throw AuthError.methodNotAllowed
         }
         
-        guard password.count >= (authConfig?.passwordMinLength ?? 8) else {
+        guard password.count >= authConfig.passwordMinLength else {
             throw AuthError.passwordTooShort
         }
         
@@ -275,10 +256,10 @@ class AuthManager: ObservableObject {
         return processAuthResponse(response)
     }
     
-    // 3. 소셜 로그인
+    // 소셜 로그인
     func signInWithProvider(_ provider: Provider) async throws -> AuthResponse {
         let providerName = provider.rawValue
-        guard authConfig?.authMethodsEnabled.contains(providerName) == true else {
+        guard authConfig.authMethodsEnabled.contains(providerName) else {
             throw AuthError.methodNotAllowed
         }
         
@@ -286,9 +267,9 @@ class AuthManager: ObservableObject {
         return processAuthResponse(response)
     }
     
-    // 4. 게스트 로그인
+    // 게스트 로그인
     func signInAsGuest() async throws -> AuthResponse {
-        guard authConfig?.guestModeEnabled == true else {
+        guard authConfig.guestModeEnabled else {
             throw AuthError.guestModeDisabled
         }
         
@@ -301,7 +282,7 @@ class AuthManager: ObservableObject {
         return processAuthResponse(response)
     }
     
-    // 5. 자동 로그인 (저장된 세션)
+    // 자동 로그인 (저장된 세션)
     func autoSignIn() async {
         do {
             let session = try await supabase.auth.session
@@ -332,7 +313,7 @@ class AuthManager: ObservableObject {
     
     private func isSessionExpired(_ session: Session) -> Bool {
         let expiresAt = session.expiresAt
-        let timeoutMinutes = authConfig?.sessionTimeoutMinutes ?? 60
+        let timeoutMinutes = authConfig.sessionTimeoutMinutes
         let maxSessionTime = Date().addingTimeInterval(TimeInterval(timeoutMinutes * 60))
         
         return Date(timeIntervalSince1970: expiresAt) > maxSessionTime
@@ -430,38 +411,41 @@ interface SecurityEvent {
 
 #### Endpoints
 ```typescript
-// GET  /api/v1/quiz/version  <-- 제거됨 (Firebase Remote Config로 대체)
 POST /api/v1/quiz/generate-file    // DB → JSON 파일 생성
 GET  /api/v1/quiz/categories
 GET  /api/v1/quiz/questions/:category
 POST /api/v1/quiz/ai-generate
 ```
 
-#### Firebase Remote Config Integration
+#### Static Configuration Integration
 ```typescript
-// Firebase Remote Config 설정값
-interface QuizRemoteConfig {
+// 정적 퀴즈 설정값
+interface QuizStaticConfig {
   quiz_version: string;           // "1.2.3"
   download_url: string;          // JSON 파일 다운로드 URL
-  categories: string;            // "person,general,country,drama,music"
-  force_update: boolean;         // 강제 업데이트 여부
+  categories: string[];          // ["person","general","country","drama","music"]
   maintenance_mode: boolean;     // 점검 모드
   min_app_version: string;       // 최소 앱 버전
-  feature_flags: string;         // "ai_quiz:true,voice_mode:true"
+  feature_flags: {               // 기능 플래그
+    ai_quiz: boolean;
+    voice_mode: boolean;
+    offline_mode: boolean;
+  };
 }
 
-// iOS 앱에서 사용
-import { getRemoteConfig, fetchAndActivate, getValue } from 'firebase/remote-config';
-
-const remoteConfig = getRemoteConfig();
-remoteConfig.settings.minimumFetchIntervalMillis = 3600000; // 1시간
-
-await fetchAndActivate(remoteConfig);
-
-const quizVersion = getValue(remoteConfig, 'quiz_version').asString();
-const downloadUrl = getValue(remoteConfig, 'download_url').asString();
-const categories = getValue(remoteConfig, 'categories').asString().split(',');
-const forceUpdate = getValue(remoteConfig, 'force_update').asBoolean();
+// 정적 설정값 (앱에서 하드코딩 또는 JSON 파일에서 로드)
+const quizConfig: QuizStaticConfig = {
+  quiz_version: "1.0.0",
+  download_url: "https://your-project.supabase.co/storage/v1/object/public/quiz-files/quiz_data_v1.0.0.json",
+  categories: ["person", "general", "country", "drama", "music"],
+  maintenance_mode: false,
+  min_app_version: "1.0.0",
+  feature_flags: {
+    ai_quiz: true,
+    voice_mode: true,
+    offline_mode: true
+  }
+};
 ```
 
 #### Quiz Data Models
@@ -1178,269 +1162,14 @@ interface MigrationPlan {
 }
 ```
 
-## Firebase Remote Config Integration
+## Static Configuration Integration
 
-```typescript
-// Firebase Remote Config로 버전 체크 (완전 무료)
-interface FirebaseRemoteConfig {
-  quiz_version: string;
-  download_url: string;
-  categories: string[];
-  force_update: boolean;
-  maintenance_mode: boolean;
-}
+### Cost Optimization with Static Files
 
-// 앱에서 사용
-const remoteConfig = getRemoteConfig();
-await fetchAndActivate(remoteConfig);
-const quizVersion = getValue(remoteConfig, 'quiz_version').asString();
-```
-
-**비용 절약:**
-- 버전 체크: 완전 무료 (1000만 요청/일)
-- Edge Function 호출 제거
-- 실시간 업데이트 지원
-
-
-
-## Firebase Remote Config Implementation Guide
-
-### 1. Firebase 프로젝트 설정
-
-```bash
-# Firebase CLI 설치
-npm install -g firebase-tools
-
-# Firebase 로그인
-firebase login
-
-# Firebase 프로젝트 생성
-firebase projects:create your-quiz-app-firebase
-
-# Firebase 프로젝트 초기화
-firebase init remoteconfig
-```
-
-### 2. Supabase Edge Function에서 Firebase Admin SDK 사용
-
-```typescript
-// supabase/functions/quiz_data/index.ts
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getRemoteConfig } from 'firebase-admin/remote-config';
-
-// Firebase Admin 초기화
-const firebaseConfig = {
-  type: "service_account",
-  project_id: Deno.env.get('FIREBASE_PROJECT_ID'),
-  private_key_id: Deno.env.get('FIREBASE_PRIVATE_KEY_ID'),
-  private_key: Deno.env.get('FIREBASE_PRIVATE_KEY')?.replace(/\\n/g, '\n'),
-  client_email: Deno.env.get('FIREBASE_CLIENT_EMAIL'),
-  client_id: Deno.env.get('FIREBASE_CLIENT_ID'),
-  auth_uri: "https://accounts.google.com/o/oauth2/auth",
-  token_uri: "https://oauth2.googleapis.com/token",
-};
-
-const app = initializeApp({
-  credential: cert(firebaseConfig),
-});
-
-// JSON 파일 생성 후 Remote Config 업데이트
-export const updateRemoteConfig = async (
-  version: string,
-  downloadUrl: string,
-  categories: string[]
-) => {
-  try {
-    const remoteConfig = getRemoteConfig(app);
-    
-    const template = await remoteConfig.getTemplate();
-    
-    // 새로운 설정값으로 업데이트
-    template.parameters = {
-      ...template.parameters,
-      quiz_version: {
-        defaultValue: { value: version },
-        description: 'Current quiz data version'
-      },
-      download_url: {
-        defaultValue: { value: downloadUrl },
-        description: 'Quiz data download URL'
-      },
-      categories: {
-        defaultValue: { value: categories.join(',') },
-        description: 'Available quiz categories'
-      },
-      force_update: {
-        defaultValue: { value: 'false' },
-        description: 'Force app to update quiz data'
-      },
-      maintenance_mode: {
-        defaultValue: { value: 'false' },
-        description: 'Enable maintenance mode'
-      },
-      min_app_version: {
-        defaultValue: { value: '1.0.0' },
-        description: 'Minimum required app version'
-      },
-      feature_flags: {
-        defaultValue: { value: 'ai_quiz:true,voice_mode:true' },
-        description: 'Feature toggle flags'
-      }
-    };
-
-    template.version = {
-      versionNumber: String(Date.now()),
-      updateTime: new Date().toISOString(),
-      updateUser: {
-        email: 'system@brainy-app.com'
-      },
-      updateOrigin: 'ADMIN_SDK_NODE',
-      updateType: 'INCREMENTAL_UPDATE'
-    };
-
-    // Remote Config 업데이트
-    const updatedTemplate = await remoteConfig.publishTemplate(template);
-    
-    console.log('Remote Config updated:', updatedTemplate.version.versionNumber);
-    
-    return {
-      success: true,
-      versionNumber: updatedTemplate.version.versionNumber
-    };
-    
-  } catch (error) {
-    console.error('Failed to update Remote Config:', error);
-    throw error;
-  }
-};
-```
-
-### 3. iOS 앱에서 Firebase Remote Config 구현
-
-```swift
-// Firebase SDK 설치 (Package.swift)
-dependencies: [
-  .package(url: "https://github.com/firebase/firebase-ios-sdk", from: "10.0.0")
-]
-
-// QuizVersionManager.swift
-import FirebaseCore
-import FirebaseRemoteConfig
-
-class QuizVersionManager: ObservableObject {
-    private let remoteConfig = RemoteConfig.remoteConfig()
-    
-    @Published var currentVersion: String = ""
-    @Published var downloadUrl: String = ""
-    @Published var categories: [String] = []
-    @Published var forceUpdate: Bool = false
-    @Published var maintenanceMode: Bool = false
-    
-    init() {
-        setupRemoteConfig()
-    }
-    
-    private func setupRemoteConfig() {
-        let settings = RemoteConfigSettings()
-        settings.minimumFetchInterval = 3600 // 1시간
-        remoteConfig.configSettings = settings
-        
-        // 기본값 설정
-        remoteConfig.setDefaults([
-            "quiz_version": "1.0.0" as NSObject,
-            "download_url": "" as NSObject,
-            "categories": "person,general,country,drama,music" as NSObject,
-            "force_update": false as NSObject,
-            "maintenance_mode": false as NSObject,
-            "min_app_version": "1.0.0" as NSObject,
-            "feature_flags": "ai_quiz:true,voice_mode:true" as NSObject
-        ])
-    }
-    
-    func fetchLatestConfig() async throws {
-        let status = try await remoteConfig.fetchAndActivate()
-        
-        DispatchQueue.main.async {
-            self.currentVersion = self.remoteConfig.configValue(forKey: "quiz_version").stringValue ?? ""
-            self.downloadUrl = self.remoteConfig.configValue(forKey: "download_url").stringValue ?? ""
-            self.categories = self.remoteConfig.configValue(forKey: "categories").stringValue?.components(separatedBy: ",") ?? []
-            self.forceUpdate = self.remoteConfig.configValue(forKey: "force_update").boolValue
-            self.maintenanceMode = self.remoteConfig.configValue(forKey: "maintenance_mode").boolValue
-        }
-        
-        print("Remote Config fetch status: \(status)")
-    }
-    
-    func checkForUpdates() async {
-        do {
-            try await fetchLatestConfig()
-            
-            if maintenanceMode {
-                // 점검 모드 화면 표시
-                showMaintenanceAlert()
-                return
-            }
-            
-            if forceUpdate || shouldDownloadNewVersion() {
-                // 새 버전 다운로드
-                await downloadQuizData()
-            }
-            
-        } catch {
-            print("Failed to fetch remote config: \(error)")
-            // 오프라인 모드로 진행
-        }
-    }
-    
-    private func shouldDownloadNewVersion() -> Bool {
-        let cachedVersion = UserDefaults.standard.string(forKey: "cached_quiz_version") ?? ""
-        return currentVersion != cachedVersion
-    }
-    
-    private func downloadQuizData() async {
-        guard !downloadUrl.isEmpty else { return }
-        
-        do {
-            let (data, _) = try await URLSession.shared.data(from: URL(string: downloadUrl)!)
-            
-            // JSON 데이터 저장
-            try saveQuizDataLocally(data)
-            
-            // 버전 정보 업데이트
-            UserDefaults.standard.set(currentVersion, forKey: "cached_quiz_version")
-            
-            print("Quiz data updated to version: \(currentVersion)")
-            
-        } catch {
-            print("Failed to download quiz data: \(error)")
-        }
-    }
-}
-```
-
-### 4. 비용 절약 효과
-
-```typescript
-// 기존 방식 (Edge Function 호출)
-const costBefore = {
-  requests_per_month: 1_000_000,
-  cost_per_request: 0.000002, // $2 per million requests
-  monthly_cost: 2.00 // USD
-};
-
-// Firebase Remote Config 방식
-const costAfter = {
-  requests_per_month: 1_000_000,
-  cost_per_request: 0, // 완전 무료
-  monthly_cost: 0.00 // USD
-};
-
-const savings = {
-  monthly: 2.00, // USD
-  yearly: 24.00, // USD
-  percentage: 100 // %
-};
-```
+- **JSON 파일 다운로드**: CDN을 통한 빠른 전송
+- **Edge Function 호출 최소화**: 데이터 업데이트 시에만
+- **로컬 캐싱**: 앱에서 오프라인 지원
+- **정적 파일 서빙**: 함수 호출 비용 절감
 
 ## Pre-Deployment Checklist
 
@@ -1752,52 +1481,27 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 ```
 
-### 🔥 **8. Firebase Remote Config 초기 설정**
+### 🔧 **8. 정적 설정 파일 준비**
 
 ```json
+// config/app-config.json
 {
-  "conditions": [],
-  "parameters": {
-    "quiz_version": {
-      "defaultValue": {
-        "value": "1.0.0"
-      },
-      "description": "현재 퀴즈 데이터 버전"
-    },
-    "download_url": {
-      "defaultValue": {
-        "value": "https://ikxipyfncyzwtlypixfz.supabase.co/storage/v1/object/public/quiz-files/quiz_data_v1.0.0.json"
-      },
-      "description": "퀴즈 데이터 다운로드 URL"
-    },
-    "auth_methods_enabled": {
-      "defaultValue": {
-        "value": "email,google,apple"
-      },
-      "description": "허용된 로그인 방식"
-    },
-    "maintenance_mode": {
-      "defaultValue": {
-        "value": "false"
-      },
-      "description": "점검 모드 여부"
-    },
-    "force_update": {
-      "defaultValue": {
-        "value": "false"
-      },
-      "description": "강제 업데이트 여부"
-    }
+  "quiz_version": "1.0.0",
+  "download_url": "https://ikxipyfncyzwtlypixfz.supabase.co/storage/v1/object/public/quiz-files/quiz_data_v1.0.0.json",
+  "auth_methods_enabled": ["email", "google", "apple"],
+  "maintenance_mode": false,
+  "min_app_version": "1.0.0",
+  "feature_flags": {
+    "ai_generation": true,
+    "leaderboard": true,
+    "offline_mode": true
   },
-  "version": {
-    "versionNumber": "1",
-    "updateTime": "2024-01-15T10:00:00Z",
-    "updateUser": {
-      "email": "admin@brainy-app.com"
-    },
-    "updateOrigin": "CONSOLE",
-    "updateType": "INCREMENTAL_UPDATE"
-  }
+  "quiz_settings": {
+    "time_limit": 30,
+    "lives": 3,
+    "hints_enabled": true
+  },
+  "last_updated": "2024-01-15T10:00:00Z"
 }
 ```
 
@@ -1835,18 +1539,18 @@ serve(async (req) => {
     });
   }
   
-  // Firebase 연결 확인
+  // Static Config 확인
   try {
-    const firebaseHealthStart = Date.now();
-    // Firebase Admin SDK 연결 테스트
+    const configHealthStart = Date.now();
+    // 정적 설정 파일 로드 테스트
     checks.push({
-      service: 'firebase',
+      service: 'static_config',
       status: 'healthy',
-      response_time: Date.now() - firebaseHealthStart
+      response_time: Date.now() - configHealthStart
     });
   } catch (error) {
     checks.push({
-      service: 'firebase',
+      service: 'static_config',
       status: 'unhealthy',
       response_time: Date.now() - startTime,
       error: error.message

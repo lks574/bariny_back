@@ -2,7 +2,6 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createResponse, handleCors } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { getQuizQuestions, uploadFileToStorage, getPublicFileUrl } from '../_shared/database.ts';
-import { updateRemoteConfig } from '../_shared/firebase-admin.ts';
 import type { QuizDataFile, QuizFileGenerationResponse } from '../_shared/types.ts';
 
 // ============================================================================
@@ -175,25 +174,7 @@ async function handleGenerateQuizFile(logger: Logger, req: Request): Promise<Res
     // 4. 공개 URL 생성
     const downloadUrl = await getPublicFileUrl(logger, 'quiz-files', fileName);
 
-    // 5. Firebase Remote Config 업데이트
-    logger.info('Firebase Remote Config 업데이트 시작');
-    
-    const remoteConfigUpdates = {
-      quiz_version: version,
-      download_url: downloadUrl,
-      categories: categories.join(','),
-      force_update: 'false' // 기본값으로 설정
-    };
-
-    const updateResult = await updateRemoteConfig(logger, remoteConfigUpdates);
-
-    if (!updateResult.success) {
-      logger.warn('Remote Config 업데이트 실패했지만 파일 생성은 성공', {
-        error: updateResult.error
-      });
-    }
-
-    // 6. 응답 생성
+    // 5. 응답 생성
     const response: QuizFileGenerationResponse = {
       success: true,
       message: '퀴즈 데이터 파일이 성공적으로 생성되었습니다',
@@ -211,8 +192,7 @@ async function handleGenerateQuizFile(logger: Logger, req: Request): Promise<Res
     const duration = performance.now() - startTime;
     logger.info('퀴즈 파일 생성 완료', {
       duration_ms: duration,
-      questions_count: allQuestions.length,
-      remote_config_updated: updateResult.success
+      questions_count: allQuestions.length
     });
 
     logger.apiEnd(req.method, '/quiz-data', 200, duration);

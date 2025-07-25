@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import type { Logger } from './logger.ts';
 import { logError, measurePerformance } from './logger.ts';
 

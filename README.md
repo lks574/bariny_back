@@ -1,14 +1,14 @@
 # 🧠 Brainy Quiz Backend
 
-Firebase Remote Config와 Supabase를 활용한 iOS 퀴즈 앱 백엔드 시스템입니다.
+Supabase 기반의 비용 효율적이고 확장 가능한 iOS 퀴즈 앱 백엔드 시스템입니다.
 
 ## 📋 **프로젝트 개요**
 
-이 프로젝트는 비용 효율적이고 확장 가능한 퀴즈 앱 백엔드를 제공하며, Firebase Remote Config를 통한 동적 설정 관리와 Supabase의 강력한 백엔드 서비스를 결합했습니다.
+이 프로젝트는 정적 설정 관리와 Supabase의 강력한 백엔드 서비스를 결합한 효율적인 퀴즈 앱 백엔드를 제공합니다.
 
 ### 🎯 **핵심 가치**
-- **비용 최적화**: Firebase Remote Config 무료 사용으로 버전 관리 비용 0원
-- **실시간 설정**: 앱 재배포 없이 실시간 설정 변경
+- **비용 최적화**: 정적 파일 서빙으로 API 호출 비용 최소화
+- **간단한 설정**: 복잡한 외부 의존성 없이 순수 Supabase 활용
 - **확장성**: Supabase Edge Functions를 통한 서버리스 아키텍처
 - **보안**: 포괄적인 인증 및 권한 관리 시스템
 - **AI 통합**: OpenAI API를 통한 지능형 퀴즈 생성
@@ -20,10 +20,9 @@ Firebase Remote Config와 Supabase를 활용한 iOS 퀴즈 앱 백엔드 시스�
 brainy_back/
 ├── README.md
 ├── deno.json                           # Deno 프로젝트 설정
-├── firebase.json                       # Firebase 프로젝트 설정
-├── firebase-remote-config.json         # Remote Config 초기 템플릿
+├── config/
+│   └── app-config.json                # 정적 앱 설정 파일
 ├── scripts/
-│   ├── firebase-setup.md              # Firebase 설정 가이드
 │   └── setup-environment.md           # 완전한 환경 설정 가이드
 ├── supabase/
 │   ├── config.toml                     # Supabase 로컬 설정 (완전 구성)
@@ -39,7 +38,6 @@ brainy_back/
 │       │   ├── logger.ts              # 로깅 시스템
 │       │   ├── database.ts            # 데이터베이스 헬퍼 (올바른 시그니처)
 │       │   ├── auth.ts                # 인증 미들웨어
-│       │   ├── firebase-admin.ts      # Firebase Admin SDK
 │       │   └── openai.ts              # OpenAI API 연동
 │       ├── health/                     # 헬스체크 API (모든 서비스 포함)
 │       ├── auth-signup/                # 회원가입 API
@@ -86,7 +84,6 @@ cp supabase/.env.local.example supabase/.env.local
 
 # 필요한 값들을 실제 값으로 변경:
 # - Supabase 키들
-# - Firebase Service Account 정보
 # - OpenAI API 키
 ```
 
@@ -102,13 +99,6 @@ deno task health
 
 ## ✅ **구현 완료 기능 (100%)**
 
-### 🔥 **Firebase Remote Config 연동 (100%)**
-- [x] Firebase Admin SDK 통합
-- [x] JWT 토큰 기반 인증
-- [x] Remote Config 파라미터 관리 (20개 이상)
-- [x] 실시간 설정 업데이트
-- [x] 비용 최적화 전략
-
 ### 🔐 **완전한 인증 시스템 (100%)**
 - [x] 이메일 회원가입/로그인
 - [x] Google/Apple 소셜 로그인
@@ -117,12 +107,12 @@ deno task health
 - [x] 로그인 시도 제한 및 계정 잠금
 - [x] 앱 버전 호환성 검사
 - [x] 세션 관리 및 디바이스 추적
-- [x] 동적 인증 정책 (Firebase Remote Config)
+- [x] 정적 인증 정책 관리
 
 ### 📊 **퀴즈 데이터 관리 (100%)**
 - [x] DB → JSON 파일 자동 생성
 - [x] Supabase Storage 업로드
-- [x] Remote Config 자동 업데이트
+- [x] 정적 설정 파일 관리
 - [x] 카테고리별 데이터 관리
 - [x] 버전 관리 시스템
 
@@ -156,7 +146,7 @@ deno task health
 - [x] 성능 측정 및 메트릭
 - [x] 보안 이벤트 추적
 - [x] OpenAI API 상태 모니터링
-- [x] Firebase 서비스 헬스체크
+- [x] 정적 설정 파일 상태 확인
 
 ### 🛠️ **인프라 및 설정 (100%)**
 - [x] 완전한 데이터베이스 스키마 (RLS 포함)
@@ -200,7 +190,7 @@ deno task leaderboard:test     # 리더보드 테스트
 
 ### 퀴즈 데이터 API
 - `GET /functions/v1/quiz-data` - 퀴즈 데이터 조회
-- `POST /functions/v1/quiz-data` - 퀴즈 파일 생성 및 Remote Config 업데이트
+- `POST /functions/v1/quiz-data` - 퀴즈 파일 생성 및 정적 파일 업로드
 
 ### 진행 상황 API
 - `GET /functions/v1/sync-progress` - 진행 상황 조회
@@ -243,7 +233,7 @@ deno task leaderboard:test     # 리더보드 테스트
 ### 인증 및 인가
 - JWT 토큰 기반 인증
 - 역할 기반 권한 관리 (RBAC)
-- Firebase Remote Config 기반 동적 정책
+- 정적 설정 기반 정책 관리
 - 세션 타임아웃 및 디바이스 관리
 
 ### 보안 모니터링
@@ -260,10 +250,10 @@ deno task leaderboard:test     # 리더보드 테스트
 
 ## 💰 **비용 최적화**
 
-### Firebase Remote Config 활용
-- **무료 티어 사용**: 월 100만 요청 무료
-- **버전 관리 비용 0원**: 기존 서버 비용 대비 100% 절감
-- **실시간 업데이트**: 앱 스토어 배포 없이 설정 변경
+### 정적 파일 활용
+- **CDN 서빙**: Supabase Storage를 통한 빠른 정적 파일 제공
+- **API 호출 최소화**: Edge Function 호출 대신 정적 파일 다운로드
+- **캐싱 최적화**: 클라이언트 및 CDN 레벨 캐싱
 
 ### OpenAI API 비용 최적화
 - **지능형 캐싱**: 동일 요청 24시간 캐시로 **90% 비용 절감**
@@ -291,11 +281,11 @@ supabase functions deploy
 # Settings → Edge Functions → Environment Variables
 ```
 
-### Firebase Remote Config 배포
+### 정적 설정 파일 배포
 
 ```bash
-# Remote Config 템플릿 배포
-firebase deploy --only remoteconfig --project your-firebase-project
+# 설정 파일을 Supabase Storage에 업로드
+supabase storage cp config/app-config.json supabase://config/app-config.json
 ```
 
 ## 📊 **모니터링 및 관리**
@@ -366,16 +356,15 @@ SELECT * FROM check_daily_generation_limit('user-uuid');
 
 ### ✅ **100% 완성된 시스템**
 
-1. **🔥 Firebase Remote Config 연동** - 완벽한 비용 최적화
-2. **🔐 완전한 인증 시스템** - 다중 로그인 방식 지원
-3. **📊 퀴즈 데이터 관리** - 자동화된 배포 파이프라인
-4. **🔄 진행 상황 동기화** - 충돌 해결 및 오프라인 지원
-5. **🏆 리더보드 시스템** - 실시간 랭킹 및 통계
-6. **🤖 AI 퀴즈 생성** - 지능형 다국어 퀴즈 생성
-7. **🩺 모니터링 & 로깅** - 종합적인 시스템 관찰
-8. **🛠️ 인프라 & 설정** - 완전한 배포 준비 상태
-9. **🔒 보안 시스템** - 엔터프라이즈 수준의 보안
-10. **💰 비용 최적화** - 최소 비용으로 최대 효율
+1. **🔐 완전한 인증 시스템** - 다중 로그인 방식 지원
+2. **📊 퀴즈 데이터 관리** - 자동화된 정적 파일 배포
+3. **🔄 진행 상황 동기화** - 충돌 해결 및 오프라인 지원
+4. **🏆 리더보드 시스템** - 실시간 랭킹 및 통계
+5. **🤖 AI 퀴즈 생성** - 지능형 다국어 퀴즈 생성
+6. **🩺 모니터링 & 로깅** - 종합적인 시스템 관찰
+7. **🛠️ 인프라 & 설정** - 완전한 배포 준비 상태
+8. **🔒 보안 시스템** - 엔터프라이즈 수준의 보안
+9. **💰 비용 최적화** - 최소 비용으로 최대 효율
 
 ### 🏆 **주요 성취**
 
@@ -387,7 +376,6 @@ SELECT * FROM check_daily_generation_limit('user-uuid');
 
 ## 📝 **문서**
 
-- [Firebase 설정 가이드](scripts/firebase-setup.md)
 - [완전한 환경 설정 가이드](scripts/setup-environment.md)
 - [API 문서](docs/api.md) *(자동 생성)*
 - [배포 가이드](docs/deployment.md) *(포함됨)*
@@ -396,7 +384,7 @@ SELECT * FROM check_daily_generation_limit('user-uuid');
 
 ### 🎯 **완벽한 시스템 통합**
 - 모든 구성 요소가 서로 완벽하게 연동
-- 실시간 설정 변경으로 무중단 운영
+- 정적 파일 기반의 안정적인 설정 관리
 - 통합된 모니터링 및 로깅
 
 ### 🚀 **개발자 친화적**
@@ -405,7 +393,7 @@ SELECT * FROM check_daily_generation_limit('user-uuid');
 - 명확한 에러 메시지
 
 ### 💰 **비용 최적화의 혁신**
-- Firebase Remote Config로 **버전 관리 비용 0원**
+- 정적 파일 서빙으로 **API 호출 비용 최소화**
 - AI 캐싱으로 **OpenAI 비용 90% 절감**
 - 서버리스로 **인프라 비용 최소화**
 
@@ -430,8 +418,7 @@ SELECT * FROM check_daily_generation_limit('user-uuid');
 1. [GitHub Issues](https://github.com/your-repo/issues)에 문의
 2. [완전한 환경 설정 가이드](scripts/setup-environment.md) 참조
 3. [Supabase 공식 문서](https://supabase.com/docs) 참조
-4. [Firebase 공식 문서](https://firebase.google.com/docs) 참조
-5. [OpenAI API 문서](https://platform.openai.com/docs) 참조
+4. [OpenAI API 문서](https://platform.openai.com/docs) 참조
 
 ---
 

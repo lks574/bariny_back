@@ -1,0 +1,29 @@
+{
+  "quiz_version": "1.0.0",
+  "download_url": "http://127.0.0.1:54321/storage/v1/object/public/quiz-files/quiz_data_v1.0.0.json",
+  "auth_methods_enabled": ["email", "google", "apple"],
+  "maintenance_mode": false,
+  "min_app_version": "1.0.0",
+  "feature_flags": {
+    "ai_generation": true,
+    "leaderboard": true,
+    "offline_mode": true,
+    "voice_mode": true
+  },
+  "quiz_settings": {
+    "time_limit": 30,
+    "lives": 3,
+    "hints_enabled": true
+  },
+  "auth_settings": {
+    "guest_login": true,
+    "social_login": true,
+    "email_verification": false,
+    "password_min_length": 8,
+    "session_timeout_minutes": 60,
+    "max_login_attempts": 5
+  },
+  "categories": ["person", "general", "country", "drama", "music"],
+  "last_updated": "2025-01-25T02:45:00Z",
+  "environment": "development"
+} 

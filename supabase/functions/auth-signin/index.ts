@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { createResponse, handleCors } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { loadAuthConfig, validateAuthMethod, validateAppVersion, checkLoginAttempts } from '../_shared/auth.ts';
@@ -35,7 +35,7 @@ serve(async (req: Request) => {
     const requestBody = await req.json() as AuthRequest;
     const { email, password, provider = 'email', oauth_token, device_info } = requestBody;
 
-    // Firebase Remote Config에서 인증 설정 로드
+    // 인증 설정 로드
     const authConfig = await loadAuthConfig(logger);
 
     // 앱 버전 검증

@@ -6,7 +6,7 @@
   - 입력 검증 스키마 및 Zod 라이브러리 설정
   - 로깅 및 메트릭 수집 공통 모듈 구현
   - OpenAPI 3.0 문서 스펙 작성
-  - Firebase Remote Config 초기 설정값 준비
+  - 정적 설정 파일 구조 및 초기값 준비
   - 헬스체크 엔드포인트 구현
   - 기본 테스트 구조 및 CI/CD 파이프라인 설정
   - Supabase Storage 버킷 생성 (quiz-files, quiz-audio)
@@ -31,18 +31,18 @@
   - 보안 감사를 위한 트리거 및 함수 구현
   - _Requirements: 1.11, 1.12, 3.1, 3.2, 8.5_
 
-- [ ] 3. Firebase Remote Config 통합 인증 시스템 구현
-  - Firebase Remote Config에 인증 관련 설정값 추가 및 구성
+- [ ] 3. 정적 설정 기반 인증 시스템 구현
+  - 정적 인증 설정 구조 설계 및 구현
   - Supabase Auth 기본 설정 및 구성 (이메일, Google, Apple 로그인)
-  - Firebase Remote Config 기반 인증 설정 동적 로딩 시스템 구현
-  - 이메일/비밀번호 인증 with 동적 비밀번호 정책 구현
-  - Google OAuth 연동 with 동적 허용/차단 기능 구현
-  - Apple Sign-in 연동 with 동적 허용/차단 기능 구현
-  - 게스트 로그인 기능 with Remote Config 제어 구현
+  - 정적 설정 기반 인증 설정 로딩 시스템 구현
+  - 이메일/비밀번호 인증 with 정적 비밀번호 정책 구현
+  - Google OAuth 연동 구현
+  - Apple Sign-in 연동 구현
+  - 게스트 로그인 기능 구현
   - JWT 토큰 검증 미들웨어 with 확장된 세션 정보 구현
   - 세션 타임아웃 및 자동 갱신 로직 구현
   - 보안 강화: Rate Limiting, 로그인 시도 제한, 이상 탐지 구현
-  - 앱 버전 호환성 검증 및 강제 업데이트 로직 구현
+  - 앱 버전 호환성 검증 로직 구현
   - 보안 이벤트 로깅 및 모니터링 시스템 구현
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11, 1.12_
 
@@ -55,14 +55,12 @@
   - _Requirements: 8.1, 8.5_
 
 - [ ] 5. 퀴즈 데이터 관리 API 구현
-  - Firebase Remote Config 프로젝트 설정 및 서비스 키 발급
-  - Firebase Admin SDK를 통한 Remote Config 자동 업데이트 시스템 구현
   - DB → JSON 파일 생성 및 Storage 업로드 엔드포인트 구현
   - 카테고리별 퀴즈 조회 엔드포인트 구현
   - 정적 파일 CDN 서빙을 통한 비용 최적화 구현
   - Storage 버킷 설정 및 공개 URL 생성 로직 구현
-  - JSON 파일 생성 후 Firebase Remote Config 자동 업데이트 로직 구현
-  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.6, 2.7, 2.8_
+  - 정적 설정 파일 업데이트 로직 구현
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
 - [ ] 6. 사용자 진행 상황 동기화 API 구현
   - 진행 상황 업로드 엔드포인트 구현
@@ -173,20 +171,18 @@
   - 프로덕션 배포 준비 및 최종 검증
   - _Requirements: 8.1, 8.4, 8.5, 8.6_
 
-- [ ] 21. Firebase Remote Config 완전 연동 구현
-  - Firebase 프로젝트 생성 및 Remote Config 초기 설정
-  - Firebase Admin SDK 설치 및 서비스 계정 키 설정
-  - Supabase Edge Function에서 Firebase Admin API 연동
-  - 퀴즈 데이터 업데이트 시 Remote Config 자동 업데이트 로직 구현
-  - iOS 앱에서 Firebase Remote Config 연동 가이드 작성
-  - 실시간 설정 업데이트 및 캐싱 전략 구현
+- [ ] 21. 정적 설정 관리 시스템 완전 구현
+  - 정적 설정 파일 구조 최적화 및 검증 시스템 구현
+  - Supabase Storage에서 설정 파일 자동 업데이트 로직 구현
+  - iOS 앱에서 정적 설정 파일 연동 가이드 작성
+  - 설정 변경 시 자동 캐싱 무효화 전략 구현
+  - 설정 파일 버전 관리 및 롤백 시스템 구현
   - _Requirements: 9.1, 9.4, 9.5_
 
-- [ ] 22. Firebase Remote Config 고급 기능 구현
-  - 조건부 배포 설정 (iOS 버전별, 사용자 그룹별)
-  - A/B 테스트를 통한 점진적 롤아웃 지원
-  - force_update 및 maintenance_mode 기능 구현
-  - feature_flags를 통한 기능 토글 시스템 구현
-  - Remote Config 값 검증 및 롤백 시스템 구현
-  - 설정 변경 로그 및 모니터링 대시보드 구현
-  - _Requirements: 2.7, 2.8, 9.1_
+- [ ] 22. 고급 설정 관리 기능 구현
+  - 환경별 설정 파일 분리 (개발/스테이징/프로덕션)
+  - maintenance_mode 및 feature_flags 기능 구현
+  - 설정 변경 추적 및 감사 로깅 시스템 구현
+  - 설정 파일 무결성 검증 및 자동 복구 시스템 구현
+  - 설정 변경 모니터링 대시보드 구현
+  - _Requirements: 2.6, 9.1_

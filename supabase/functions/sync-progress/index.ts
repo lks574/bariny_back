@@ -112,7 +112,7 @@ async function handleSyncData(
       lastSyncAt: syncRequest.last_sync_at
     });
 
-    // Firebase Remote Config에서 동기화 설정 로드
+          // 동기화 설정 로드
     const authConfig = await loadAuthConfig(logger);
     if (!authConfig.auto_sync_enabled) {
       return createResponse({
