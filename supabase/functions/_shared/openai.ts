@@ -515,12 +515,109 @@ export function getOpenAIClient(): OpenAIClient {
   return openaiClient;
 }
 
+// Mock AI 생성 함수 (OpenAI API 키가 없을 때 사용)
+export async function generateMockQuizQuestions(
+  logger: Logger,
+  request: AIGenerationRequest
+): Promise<AIGenerationResponse> {
+  logger.info('Mock AI 퀴즈 생성 시작', request);
+  
+  // 카테고리별 샘플 문제들
+  const mockQuestions = {
+    general: [
+      {
+        question: "지구에서 가장 깊은 바다는?",
+        options: ["마리아나 해구", "푸에르토리코 해구", "일본 해구", "페루 해구"],
+        correct_answer: 0,
+        explanation: "마리아나 해구는 약 11,000m 깊이로 지구에서 가장 깊은 곳입니다."
+      },
+      {
+        question: "인체에서 가장 작은 뼈는?",
+        options: ["등자뼈", "망치뼈", "모루뼈", "볼뼈"],
+        correct_answer: 0,
+        explanation: "등자뼈는 귀 속에 있는 약 2-3mm 크기의 가장 작은 뼈입니다."
+      }
+    ],
+    person: [
+      {
+        question: "한국 최초의 여성 대통령은?",
+        options: ["박근혜", "이명박", "김대중", "노무현"],
+        correct_answer: 0,
+        explanation: "박근혜는 2013년부터 2017년까지 한국의 18대 대통령을 역임했습니다."
+      }
+    ],
+    country: [
+      {
+        question: "세계에서 가장 작은 나라는?",
+        options: ["바티칸", "모나코", "나우루", "산마리노"],
+        correct_answer: 0,
+        explanation: "바티칸은 면적이 0.44km²로 세계에서 가장 작은 국가입니다."
+      }
+    ],
+    drama: [
+      {
+        question: "'오징어 게임'의 감독은?",
+        options: ["황동혁", "봉준호", "박찬욱", "김지운"],
+        correct_answer: 0,
+        explanation: "황동혁 감독이 연출한 오징어 게임은 전 세계적으로 큰 인기를 얻었습니다."
+      }
+    ],
+    music: [
+      {
+        question: "'강남스타일'을 부른 가수는?",
+        options: ["PSY", "빅뱅", "BTS", "블랙핑크"],
+        correct_answer: 0,
+        explanation: "PSY(싸이)의 강남스타일은 2012년 전 세계적으로 대히트했습니다."
+      }
+    ]
+  };
+
+  const categoryQuestions = mockQuestions[request.category as keyof typeof mockQuestions] || mockQuestions.general;
+  const selectedQuestions = categoryQuestions.slice(0, request.count);
+
+  const questions: QuizQuestion[] = selectedQuestions.map(q => ({
+    id: crypto.randomUUID(),
+    category: request.category,
+    question: q.question,
+    options: q.options,
+    correct_answer: q.correct_answer,
+    difficulty: request.difficulty,
+    tags: [],
+    explanation: q.explanation,
+    time_limit: 30,
+    points: 10,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }));
+
+  return {
+    success: true,
+    generated_questions: questions,
+    generation_info: {
+      model_used: 'mock-ai',
+      tokens_used: 0,
+      generation_time: 100,
+      cost_estimate: 0
+    },
+    generated_at: new Date().toISOString()
+  };
+}
+
 export async function generateQuizQuestions(
   logger: Logger,
   request: AIGenerationRequest
 ): Promise<AIGenerationResponse> {
-  const client = getOpenAIClient();
-  return await client.generateQuizQuestions(logger, request);
+  try {
+    const client = getOpenAIClient();
+    return await client.generateQuizQuestions(logger, request);
+  } catch (error) {
+    if (error.message.includes('OPENAI_API_KEY')) {
+      logger.warn('OpenAI API 키가 없어 Mock AI 생성 사용', { error: error.message });
+      return await generateMockQuizQuestions(logger, request);
+    }
+    throw error;
+  }
 }
 
 export async function checkOpenAIHealth(logger: Logger): Promise<{

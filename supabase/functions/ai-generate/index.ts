@@ -163,7 +163,7 @@ async function handleGenerateQuiz(logger: Logger, req: Request): Promise<Respons
     await saveGenerationHistory(
       logger, 
       generationId, 
-      authContext.user.id, 
+      userId, 
       generationRequest, 
       aiResponse
     );
@@ -171,13 +171,10 @@ async function handleGenerateQuiz(logger: Logger, req: Request): Promise<Respons
     // 관리자가 아닌 경우 검토 대기 상태로 저장
     const questionsToSave = aiResponse.generated_questions.map(q => ({
       ...q,
+      id: q.id || crypto.randomUUID(),
       is_active: authContext.isAdmin, // 관리자는 즉시 활성화
-      metadata: {
-        ...q,
-        generation_id: generationId,
-        generated_by: authContext.user.id,
-        requires_approval: !authContext.isAdmin
-      }
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     }));
 
     // 임시 퀴즈 테이블에 저장 (검토용)
@@ -481,7 +478,7 @@ async function savePendingQuestions(logger: Logger, questions: QuizQuestion[]): 
           question.explanation,
           question.time_limit,
           question.points,
-          JSON.stringify(question.metadata || {}),
+          JSON.stringify({}), // metadata placeholder
           question.created_at
         ]
       );
