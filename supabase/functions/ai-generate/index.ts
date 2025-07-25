@@ -1,8 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createResponse, handleCors } from '../_shared/cors.ts';
-import { createLogger } from '../_shared/logger.ts';
+import { createLogger, type Logger } from '../_shared/logger.ts';
 import { verifyAuthToken, requireAdmin } from '../_shared/auth.ts';
-import { validateInput } from '../_shared/validation.ts';
 import { generateQuizQuestions } from '../_shared/openai.ts';
 import { executeQuery } from '../_shared/database.ts';
 import type { AIGenerationRequest, AIGenerationResponse, QuizQuestion } from '../_shared/types.ts';
@@ -79,25 +78,53 @@ async function handleGenerateQuiz(logger: Logger, req: Request): Promise<Respons
       }, 401);
     }
 
-    // 요청 본문 파싱 및 검증
+    // 요청 본문 파싱 및 간단한 검증
     const requestBody = await req.json();
-    const validationResult = await validateInput(requestBody, 'aiGeneration');
     
-    if (!validationResult.success) {
+    if (!requestBody || typeof requestBody !== 'object') {
       return createResponse({
         success: false,
         error: {
           code: 'INVALID_REQUEST',
-          message: '요청 데이터가 올바르지 않습니다',
-          details: validationResult.errors
+          message: '요청 데이터가 올바르지 않습니다'
         }
       }, 400);
     }
 
-    const generationRequest = validationResult.data as AIGenerationRequest;
+    // 필수 필드 검증
+    const { category, difficulty, count = 2, language = 'ko' } = requestBody;
     
+    if (!category || !difficulty) {
+      return createResponse({
+        success: false,
+        error: {
+          code: 'MISSING_REQUIRED_FIELDS',
+          message: 'category와 difficulty는 필수 필드입니다'
+        }
+      }, 400);
+    }
+
+    const generationRequest: AIGenerationRequest = {
+      category,
+      difficulty,
+      count: Math.min(Math.max(count, 1), 10), // 1-10개 제한
+      language,
+      topic: requestBody.topic
+    };
+    
+    const userId = authContext.user?.id;
+    if (!userId) {
+      return createResponse({
+        success: false,
+        error: {
+          code: 'USER_NOT_FOUND',
+          message: '사용자 정보를 찾을 수 없습니다'
+        }
+      }, 400);
+    }
+
     logger.info('AI 퀴즈 생성 요청 시작', {
-      userId: authContext.user.id,
+      userId,
       category: generationRequest.category,
       difficulty: generationRequest.difficulty,
       count: generationRequest.count,
@@ -106,7 +133,7 @@ async function handleGenerateQuiz(logger: Logger, req: Request): Promise<Respons
 
     // 일일 생성 제한 확인 (일반 사용자)
     if (!authContext.isAdmin) {
-      const dailyLimit = await checkDailyGenerationLimit(logger, authContext.user.id);
+      const dailyLimit = await checkDailyGenerationLimit(logger, userId);
       if (!dailyLimit.allowed) {
         return createResponse({
           success: false,
