@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createResponse, handleCors } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { checkFirebaseHealth } from '../_shared/firebase-admin.ts';
+import { checkOpenAIHealth } from '../_shared/openai.ts';
 import type { HealthCheck } from '../_shared/types.ts';
 
 // ============================================================================
@@ -26,7 +27,8 @@ serve(async (req: Request) => {
         database: await checkDatabase(),
         auth: await checkAuth(),
         storage: await checkStorage(),
-        firebase: await checkFirebaseHealth(logger)
+        firebase: await checkFirebaseHealth(logger),
+        openai: await checkOpenAIHealth(logger)
       },
       total_response_time: 0
     };

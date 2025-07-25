@@ -336,6 +336,7 @@ export interface HealthCheck {
     auth: ServiceHealth;
     storage: ServiceHealth;
     firebase: ServiceHealth;
+    openai: ServiceHealth;
   };
   total_response_time: number;
 }

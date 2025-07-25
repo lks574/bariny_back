@@ -1,46 +1,61 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "lib": ["deno.window"],
-    "strict": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "lib": ["deno.window", "dom"],
+    "strict": true
   },
   "fmt": {
     "files": {
-      "include": ["supabase/functions/", "src/"]
+      "include": ["supabase/functions/", "scripts/"],
+      "exclude": ["supabase/functions/_shared/types.ts"]
     },
     "options": {
       "useTabs": false,
       "lineWidth": 100,
       "indentWidth": 2,
       "semiColons": true,
-      "singleQuote": true
+      "singleQuote": true,
+      "proseWrap": "preserve"
     }
   },
   "lint": {
     "files": {
-      "include": ["supabase/functions/", "src/"]
+      "include": ["supabase/functions/", "scripts/"],
+      "exclude": []
     },
     "rules": {
-      "tags": ["recommended"]
+      "tags": ["recommended"],
+      "exclude": ["no-unused-vars", "no-explicit-any"]
     }
   },
   "tasks": {
     "dev": "supabase functions serve --env-file supabase/.env.local",
-    "deploy": "supabase functions deploy",
+    "deploy": "supabase functions deploy --no-verify-jwt",
+    "deploy:all": "supabase functions deploy",
     "db:reset": "supabase db reset",
     "db:migration": "supabase migration new",
-    "test": "deno test --allow-all tests/",
-    "lint": "deno lint supabase/functions/",
-    "fmt": "deno fmt supabase/functions/"
+    "db:diff": "supabase db diff",
+    "db:push": "supabase db push",
+    "test": "deno test --allow-all",
+    "test:watch": "deno test --allow-all --watch",
+    "fmt": "deno fmt",
+    "lint": "deno lint",
+    "check": "deno check supabase/functions/**/*.ts",
+    "health": "curl -X GET http://localhost:54321/functions/v1/health",
+    "ai:test": "curl -X POST http://localhost:54321/functions/v1/ai-generate -H 'Content-Type: application/json' -H 'Authorization: Bearer YOUR_JWT_TOKEN' -d '{\"category\":\"general\",\"difficulty\":\"medium\",\"count\":2}'",
+    "sync:test": "curl -X GET http://localhost:54321/functions/v1/sync-progress -H 'Authorization: Bearer YOUR_JWT_TOKEN'",
+    "leaderboard:test": "curl -X GET http://localhost:54321/functions/v1/leaderboard?category=all&time_range=week&limit=10"
   },
   "imports": {
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
-    "@supabase/functions-js": "https://esm.sh/@supabase/functions-js@2",
-    "firebase-admin": "https://esm.sh/firebase-admin@12",
-    "zod": "https://deno.land/x/zod@v3.21.4/mod.ts",
-    "jose": "https://deno.land/x/jose@v5.1.3/index.ts",
-    "std/": "https://deno.land/std@0.190.0/"
-  }
+    "std/": "https://deno.land/std@0.177.0/",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.38.4",
+    "zod": "https://deno.land/x/zod@v3.22.4/mod.ts",
+    "firebase-admin": "https://esm.sh/firebase-admin@11.11.1",
+    "openai": "https://esm.sh/openai@4.20.1"
+  },
+  "exclude": [
+    "node_modules",
+    ".git",
+    "dist"
+  ]
 } 
