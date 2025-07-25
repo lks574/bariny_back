@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "fmt": {
+    "files": {
+      "include": ["supabase/functions/", "src/"]
+    },
+    "options": {
+      "useTabs": false,
+      "lineWidth": 100,
+      "indentWidth": 2,
+      "semiColons": true,
+      "singleQuote": true
+    }
+  },
+  "lint": {
+    "files": {
+      "include": ["supabase/functions/", "src/"]
+    },
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "tasks": {
+    "dev": "supabase functions serve --env-file supabase/.env.local",
+    "deploy": "supabase functions deploy",
+    "db:reset": "supabase db reset",
+    "db:migration": "supabase migration new",
+    "test": "deno test --allow-all tests/",
+    "lint": "deno lint supabase/functions/",
+    "fmt": "deno fmt supabase/functions/"
+  },
+  "imports": {
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
+    "@supabase/functions-js": "https://esm.sh/@supabase/functions-js@2",
+    "firebase-admin": "https://esm.sh/firebase-admin@12",
+    "zod": "https://deno.land/x/zod@v3.21.4/mod.ts",
+    "jose": "https://deno.land/x/jose@v5.1.3/index.ts",
+    "std/": "https://deno.land/std@0.190.0/"
+  }
+} 
