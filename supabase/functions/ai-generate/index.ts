@@ -146,9 +146,28 @@ async function handleGenerateQuiz(logger: Logger, req: Request): Promise<Respons
     }
 
     // OpenAI를 통한 퀴즈 생성
-    const aiResponse = await generateQuizQuestions(logger, generationRequest);
+    let aiResponse;
+    try {
+      logger.info('generateQuizQuestions 호출 시작', { generationRequest });
+      aiResponse = await generateQuizQuestions(logger, generationRequest);
+      logger.info('generateQuizQuestions 호출 완료', { aiResponse });
+    } catch (error) {
+      logger.error('generateQuizQuestions에서 예외 발생', { 
+        error: error.message, 
+        stack: error.stack,
+        generationRequest 
+      });
+      return createResponse({
+        success: false,
+        error: {
+          code: 'AI_GENERATION_FAILED',
+          message: `AI 퀴즈 생성에 실패했습니다: ${error.message}`
+        }
+      }, 500);
+    }
     
     if (!aiResponse.success || aiResponse.generated_questions.length === 0) {
+      logger.warn('AI 응답이 실패하거나 문제가 없음', { aiResponse });
       return createResponse({
         success: false,
         error: {

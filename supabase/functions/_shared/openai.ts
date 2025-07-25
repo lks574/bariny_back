@@ -63,7 +63,7 @@ interface GenerationCacheEntry {
 class OpenAIClient {
   private apiKey: string;
   private baseUrl = 'https://api.openai.com/v1';
-  private defaultModel = 'gpt-3.5-turbo';
+  private defaultModel = 'gpt-4o-mini';
   private cache = new Map<string, GenerationCacheEntry>();
 
   constructor(apiKey: string) {
@@ -445,17 +445,25 @@ Respond only in JSON format.`;
   }
 
   private calculateCost(usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }): number {
-    // GPT-3.5-turbo 가격 (2024년 기준)
-    // Input: $0.0010 / 1K tokens
-    // Output: $0.0020 / 1K tokens
-    const inputCost = (usage.prompt_tokens / 1000) * 0.0010;
-    const outputCost = (usage.completion_tokens / 1000) * 0.0020;
+    // GPT-4o-mini 가격 (2024년 기준) - 훨씬 저렴!
+    // Input: $0.15 / 1M tokens = $0.00015 / 1K tokens
+    // Output: $0.60 / 1M tokens = $0.0006 / 1K tokens
+    const inputCost = (usage.prompt_tokens / 1000) * 0.00015;
+    const outputCost = (usage.completion_tokens / 1000) * 0.0006;
     return Number((inputCost + outputCost).toFixed(6));
   }
 
   private generateCacheKey(request: AIGenerationRequest): string {
     const key = `${request.category}_${request.difficulty}_${request.count}_${request.topic || 'none'}_${request.style || 'none'}_${request.language || 'ko'}`;
-    return btoa(key).replace(/[^a-zA-Z0-9]/g, '').substring(0, 32);
+    
+    // UTF-8 한국어 지원을 위해 TextEncoder 사용
+    const encoder = new TextEncoder();
+    const data = encoder.encode(key);
+    
+    // Base64 인코딩 (Uint8Array -> Base64)
+    const base64 = btoa(String.fromCharCode(...data));
+    
+    return base64.replace(/[^a-zA-Z0-9]/g, '').substring(0, 32);
   }
 
   private getFromCache(key: string): GenerationCacheEntry | null {
@@ -609,14 +617,20 @@ export async function generateQuizQuestions(
   request: AIGenerationRequest
 ): Promise<AIGenerationResponse> {
   try {
+    logger.info('AI 퀴즈 생성 시도', { request });
     const client = getOpenAIClient();
+    logger.info('OpenAI 클라이언트 생성 성공');
     return await client.generateQuizQuestions(logger, request);
   } catch (error) {
-    if (error.message.includes('OPENAI_API_KEY')) {
-      logger.warn('OpenAI API 키가 없어 Mock AI 생성 사용', { error: error.message });
-      return await generateMockQuizQuestions(logger, request);
-    }
-    throw error;
+    logger.error('AI 퀴즈 생성 오류', { 
+      error: error.message,
+      stack: error.stack,
+      request
+    });
+    
+    // 모든 오류에 대해 Mock AI로 fallback
+    logger.warn('실제 AI 실패, Mock AI 생성으로 fallback', { error: error.message });
+    return await generateMockQuizQuestions(logger, request);
   }
 }
 
