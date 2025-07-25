@@ -1,5 +1,4 @@
-# Supabase local configuration file
-# See: https://supabase.com/docs/reference/cli/config
+project_id = "brainy-backend"
 
 [api]
 enabled = true
@@ -9,7 +8,6 @@ extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [db]
-enabled = true
 port = 54322
 shadow_port = 54320
 major_version = 15
@@ -27,84 +25,19 @@ pop3_port = 54326
 
 [storage]
 enabled = true
-port = 54327
-image_transformation = { enabled = true }
+file_size_limit = "50MiB"
 
 [edge_runtime]
 enabled = true
-port = 54328
 
 [auth]
 enabled = true
-port = 54329
 site_url = "http://localhost:3000"
 additional_redirect_urls = ["https://localhost:3000"]
 jwt_expiry = 3600
-refresh_token_rotation_enabled = true
-secure_password_change_enabled = true
 enable_anonymous_sign_ins = false
 
 [auth.email]
 enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
-
-# ============================================================================
-# Edge Functions Configuration
-# ============================================================================
-
-# Health Check Function
-[[edge_runtime.function]]
-name = "health"
-verify_jwt = false
-
-# Authentication Functions
-[[edge_runtime.function]]
-name = "auth-signup"
-verify_jwt = false
-
-[[edge_runtime.function]]
-name = "auth-signin"
-verify_jwt = false
-
-# Quiz Data Management
-[[edge_runtime.function]]
-name = "quiz-data"
-verify_jwt = true
-
-# Progress Synchronization
-[[edge_runtime.function]]
-name = "sync-progress"
-verify_jwt = true
-
-# Leaderboard
-[[edge_runtime.function]]
-name = "leaderboard"
-verify_jwt = false
-
-# AI Quiz Generation
-[[edge_runtime.function]]
-name = "ai-generate"
-verify_jwt = true
-
-# ============================================================================
-# Storage Configuration
-# ============================================================================
-
-[storage.buckets.quiz-files]
-public = true
-file_size_limit = "10MB"
-allowed_mime_types = ["application/json", "text/plain", "audio/mpeg", "audio/wav", "image/jpeg", "image/png", "image/webp"]
-
-[storage.buckets.user-uploads]
-public = false
-file_size_limit = "5MB"
-allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]
-
-# ============================================================================
-# Experimental Features
-# ============================================================================
-
-[experimental]
-# Enable new features
-webhook_url = "http://localhost:54327/object/sign/quiz-files" 
