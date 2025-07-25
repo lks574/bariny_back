@@ -1,0 +1,14 @@
+{
+  "remoteconfig": {
+    "template": "firebase-remote-config.json"
+  },
+  "emulators": {
+    "remoteconfig": {
+      "port": 9299
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    }
+  }
+} 
