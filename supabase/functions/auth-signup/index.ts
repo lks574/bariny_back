@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { createResponse, handleCors } from '../_shared/cors.ts';
-import { createLogger } from '../_shared/logger.ts';
+import { createLogger, type Logger } from '../_shared/logger.ts';
 import { loadAuthConfig, validateAuthMethod, validatePassword, validateAppVersion, checkLoginAttempts } from '../_shared/auth.ts';
 import { createSecurityEvent } from '../_shared/database.ts';
 import type { AuthRequest, AuthResponse, UserProfile } from '../_shared/types.ts';
@@ -254,47 +254,73 @@ async function handleEmailSignup(
       };
     }
 
-    // 사용자 정보를 users 테이블에 저장
-    const { error: insertError } = await supabase
-      .from('users')
-      .insert({
-        id: data.user.id,
-        email: data.user.email,
-        display_name: data.user.user_metadata?.display_name || email.split('@')[0],
-        auth_provider: 'email',
-        is_verified: data.user.email_confirmed_at !== null,
-        is_active: true,
-        account_status: 'active',
-        login_count: 0,
-        failed_login_attempts: 0,
-        preferences: {
-          language: 'ko',
-          notification_enabled: true,
-          auto_sync_enabled: true,
-          theme: 'system'
-        },
-        feature_flags: {},
-        metadata: {
-          signup_method: 'email',
-          created_via: 'api'
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
+    // 사용자 정보를 users 테이블에 저장 (upsert 사용)
+    const userRecord = {
+      id: data.user.id,
+      email: data.user.email,
+      display_name: data.user.user_metadata?.display_name || email.split('@')[0],
+      auth_provider: 'email',
+      is_verified: data.user.email_confirmed_at !== null,
+      is_active: true,
+      account_status: 'active',
+      login_count: 0,
+      failed_login_attempts: 0,
+      preferences: {
+        language: 'ko',
+        notification_enabled: true,
+        auto_sync_enabled: true,
+        theme: 'system'
+      },
+      feature_flags: {},
+      metadata: {
+        signup_method: 'email',
+        created_via: 'api'
+      },
+      updated_at: new Date().toISOString()
+    };
 
-    if (insertError) {
-      logger.error('사용자 정보 저장 실패', { error: insertError.message });
+    logger.debug('사용자 데이터 저장 시도', { 
+      user_id: data.user.id, 
+      email: data.user.email 
+    });
+
+    const { error: upsertError, data: insertedUser } = await supabase
+      .from('users')
+      .upsert(userRecord, {
+        onConflict: 'id',
+        ignoreDuplicates: false
+      })
+      .select()
+      .single();
+
+    if (upsertError) {
+      logger.error('사용자 정보 저장 실패', { 
+        error: upsertError.message,
+        details: upsertError.details,
+        hint: upsertError.hint,
+        code: upsertError.code
+      });
+      
       // Supabase Auth 사용자 삭제 (cleanup)
-      await supabase.auth.admin.deleteUser(data.user.id);
+      try {
+        await supabase.auth.admin.deleteUser(data.user.id);
+      } catch (cleanupError) {
+        logger.warn('Auth 사용자 cleanup 실패', { error: cleanupError.message });
+      }
       
       return {
         success: false,
         error: {
           code: 'USER_DATA_SAVE_FAILED',
-          message: '사용자 정보 저장에 실패했습니다'
+          message: `사용자 정보 저장에 실패했습니다: ${upsertError.message}`
         }
       };
     }
+
+    logger.info('사용자 데이터 저장 성공', { 
+      user_id: data.user.id,
+      email: data.user.email 
+    });
 
     const userProfile: UserProfile = {
       id: data.user.id,

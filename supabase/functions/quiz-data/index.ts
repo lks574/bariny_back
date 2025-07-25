@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createResponse, handleCors } from '../_shared/cors.ts';
-import { createLogger } from '../_shared/logger.ts';
+import { createLogger, type Logger } from '../_shared/logger.ts';
 import { getQuizQuestions, uploadFileToStorage, getPublicFileUrl } from '../_shared/database.ts';
 import type { QuizDataFile, QuizFileGenerationResponse } from '../_shared/types.ts';
 
@@ -64,15 +64,27 @@ async function handleGetQuizData(logger: Logger, req: Request): Promise<Response
   try {
     logger.info('퀴즈 데이터 조회 시작', { category, limit });
 
-    const questions = await getQuizQuestions(logger, category || undefined, limit);
+    const { data: questions, error } = await getQuizQuestions(logger, category || undefined, limit);
+
+    if (error || !questions) {
+      return createResponse({
+        success: false,
+        error: {
+          code: 'DATA_FETCH_FAILED',
+          message: '퀴즈 데이터 조회에 실패했습니다'
+        }
+      }, 500);
+    }
+
+    const questionsArray = Array.isArray(questions) ? questions : [];
 
     logger.apiEnd(req.method, '/quiz-data', 200, performance.now());
 
     return createResponse({
       success: true,
       data: {
-        questions,
-        total_count: questions.length,
+        questions: questionsArray,
+        total_count: questionsArray.length,
         category: category || 'all',
         generated_at: new Date().toISOString()
       }
@@ -123,11 +135,21 @@ async function handleGenerateQuizFile(logger: Logger, req: Request): Promise<Res
     });
 
     // 1. 데이터베이스에서 퀴즈 데이터 조회
-    const allQuestions = [];
+    const allQuestions: any[] = [];
     
     for (const category of categories) {
-      const questions = await getQuizQuestions(logger, category, 1000);
-      allQuestions.push(...questions);
+      const { data: questions, error } = await getQuizQuestions(logger, category, 1000);
+      
+      if (error) {
+        logger.warn(`카테고리 ${category} 퀴즈 조회 실패`, { error: error.message });
+        continue;
+      }
+      
+      if (questions && Array.isArray(questions)) {
+        allQuestions.push(...questions);
+      } else {
+        logger.warn(`카테고리 ${category}에서 유효하지 않은 데이터 형식`, { questions });
+      }
     }
 
     if (allQuestions.length === 0) {

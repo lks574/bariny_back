@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { createResponse, handleCors } from '../_shared/cors.ts';
-import { createLogger } from '../_shared/logger.ts';
+import { createLogger, type Logger } from '../_shared/logger.ts';
 import { loadAuthConfig, validateAuthMethod, validateAppVersion, checkLoginAttempts } from '../_shared/auth.ts';
 import { createSecurityEvent, updateUserLastLogin } from '../_shared/database.ts';
 import type { AuthRequest, AuthResponse, UserProfile, SessionInfo } from '../_shared/types.ts';

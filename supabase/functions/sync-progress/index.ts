@@ -1,9 +1,8 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createResponse, handleCors } from '../_shared/cors.ts';
-import { createLogger } from '../_shared/logger.ts';
+import { createLogger, type Logger } from '../_shared/logger.ts';
 import { verifyAuthToken, loadAuthConfig } from '../_shared/auth.ts';
-import { saveQuizResults, getQuizSessionsByUser } from '../_shared/database.ts';
-import { validateInput } from '../_shared/validation.ts';
+import { saveQuizResults, getQuizSessionsByUser, executeQuery } from '../_shared/database.ts';
 import type { 
   SyncRequest, 
   SyncResponse, 
@@ -88,22 +87,20 @@ async function handleSyncData(
   const startTime = performance.now();
 
   try {
-    // 요청 본문 파싱 및 검증
+    // 요청 본문 파싱 및 간단한 검증
     const requestBody = await req.json();
-    const validationResult = await validateInput(requestBody, 'syncRequest');
     
-    if (!validationResult.success) {
+    if (!requestBody || typeof requestBody !== 'object') {
       return createResponse({
         success: false,
         error: {
           code: 'INVALID_REQUEST',
-          message: '요청 데이터가 올바르지 않습니다',
-          details: validationResult.errors
+          message: '요청 데이터가 올바르지 않습니다'
         }
       }, 400);
     }
 
-    const syncRequest = validationResult.data as SyncRequest;
+    const syncRequest = requestBody as SyncRequest;
     
     logger.info('퀴즈 결과 동기화 시작', {
       userId,
@@ -243,7 +240,7 @@ async function handleGetProgress(
 
   try {
     const url = new URL(req.url);
-    const category = url.searchParams.get('category');
+    const category = url.searchParams.get('category') || undefined;
     const limit = parseInt(url.searchParams.get('limit') || '50');
     const offset = parseInt(url.searchParams.get('offset') || '0');
     const includeStats = url.searchParams.get('include_stats') === 'true';
@@ -257,7 +254,19 @@ async function handleGetProgress(
     });
 
     // 사용자 퀴즈 세션 조회
-    const sessions = await getQuizSessionsByUser(logger, userId, category, limit, offset);
+    const { data: sessions, error } = await getQuizSessionsByUser(logger, userId, category, limit, offset);
+
+    if (error || !sessions) {
+      return createResponse({
+        success: false,
+        error: {
+          code: 'SESSIONS_FETCH_FAILED',
+          message: '세션 조회에 실패했습니다'
+        }
+      }, 500);
+    }
+
+    const sessionsArray = Array.isArray(sessions) ? sessions : [];
 
     // 통계 정보 계산 (요청 시)
     let stats: ProgressStats | undefined;
@@ -268,7 +277,7 @@ async function handleGetProgress(
     const duration = performance.now() - startTime;
     logger.info('사용자 진행 상황 조회 완료', {
       userId,
-      sessionCount: sessions.length,
+      sessionCount: sessionsArray.length,
       duration_ms: duration
     });
 
@@ -277,14 +286,14 @@ async function handleGetProgress(
     return createResponse({
       success: true,
       data: {
-        sessions,
+        sessions: sessionsArray,
         stats,
-        total_count: sessions.length,
+        total_count: sessionsArray.length,
         category: category || 'all',
         pagination: {
           limit,
           offset,
-          has_more: sessions.length === limit
+          has_more: sessionsArray.length === limit
         },
         last_updated: new Date().toISOString()
       }
@@ -391,7 +400,6 @@ async function syncQuizSession(
   session: QuizSession
 ): Promise<{ success: boolean; conflict?: any }> {
   try {
-    const { executeQuery } = await import('../_shared/database.ts');
     
     // 기존 세션 확인
     const existingSession = await executeQuery(
@@ -465,7 +473,6 @@ async function syncQuizResult(
   result: QuizResult
 ): Promise<{ success: boolean; conflict?: any }> {
   try {
-    const { executeQuery } = await import('../_shared/database.ts');
     
     // 기존 결과 확인
     const existingResult = await executeQuery(
@@ -527,7 +534,6 @@ async function getLatestServerData(
   lastSyncAt: string
 ): Promise<any> {
   try {
-    const { executeQuery } = await import('../_shared/database.ts');
     
     // 마지막 동기화 이후 변경된 데이터 조회
     const [sessions, results] = await Promise.all([
@@ -565,7 +571,6 @@ async function calculateProgressStats(
   category?: string
 ): Promise<ProgressStats> {
   try {
-    const { executeQuery } = await import('../_shared/database.ts');
     
     const categoryFilter = category ? 'AND qs.category = $2' : '';
     const params = category ? [userId, category] : [userId];
@@ -625,7 +630,6 @@ async function updateQuizSession(
   updates: any
 ): Promise<{ success: boolean; error?: any }> {
   try {
-    const { executeQuery } = await import('../_shared/database.ts');
     
     // 세션 소유권 확인
     const session = await executeQuery(

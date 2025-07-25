@@ -4,7 +4,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import type { Logger } from './logger.ts';
-import { logError, logSecurityEvent } from './logger.ts';
+import { logError, logSecurityEvent, createLogger } from './logger.ts';
 import { createSecurityEvent } from './database.ts';
 import type { AuthRemoteConfig, UserProfile } from './types.ts';
 
@@ -134,29 +134,18 @@ export async function verifyAuthToken(
 
 export async function loadAuthConfig(logger: Logger): Promise<AuthRemoteConfig> {
   try {
-    // 기본 정적 설정값 사용
-    const authMethodsEnabled = 'email,google,apple';
-    const socialLoginRequired = 'false';
-    const guestModeEnabled = 'true';
-    const passwordMinLength = '8';
-    const sessionTimeoutMinutes = '60';
-    const maxLoginAttempts = '5';
-    const autoSyncEnabled = 'true';
-    const offlineModeEnabled = 'true';
-    const minAppVersionForAuth = '1.0.0';
-    const deprecatedAuthNotice = '앱을 최신 버전으로 업데이트해 주세요.';
-
+    // 기본 정적 설정값 사용 (게스트 모드 활성화)
     return {
-      auth_methods_enabled: authMethodsEnabled || 'email,google,apple',
-      social_login_required: socialLoginRequired === 'true',
-      guest_mode_enabled: guestModeEnabled !== 'false',
-      password_min_length: parseInt(passwordMinLength || '8'),
-      session_timeout_minutes: parseInt(sessionTimeoutMinutes || '60'),
-      max_login_attempts: parseInt(maxLoginAttempts || '5'),
-      auto_sync_enabled: autoSyncEnabled !== 'false',
-      offline_mode_enabled: offlineModeEnabled !== 'false',
-      min_app_version_for_auth: minAppVersionForAuth || '1.0.0',
-      deprecated_auth_notice: deprecatedAuthNotice || '앱을 최신 버전으로 업데이트해 주세요.'
+      auth_methods_enabled: 'email,google,apple,guest',
+      social_login_required: false,
+      guest_mode_enabled: true, // 게스트 모드 활성화
+      password_min_length: 8,
+      session_timeout_minutes: 60,
+      max_login_attempts: 5,
+      auto_sync_enabled: true,
+      offline_mode_enabled: true,
+      min_app_version_for_auth: '1.0.0',
+      deprecated_auth_notice: '앱을 최신 버전으로 업데이트해 주세요.'
     };
 
   } catch (error) {
