@@ -5,18 +5,21 @@
 export interface APIResponse<T = any> {
   success: boolean;
   data?: T;
-  error?: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-  meta?: {
-    total_count?: number;
-    page?: number;
-    per_page?: number;
-    version?: string;
-    timestamp?: string;
-  };
+  error?: APIError;
+  message?: string;
+}
+
+export interface APIError {
+  code: string;
+  message: string;
+  details?: any;
+}
+
+export interface PaginationInfo {
+  limit: number;
+  offset: number;
+  total_count?: number;
+  has_more?: boolean;
 }
 
 // ============================================================================
@@ -28,11 +31,7 @@ export interface AuthRequest {
   password?: string;
   provider?: 'email' | 'google' | 'apple' | 'guest';
   oauth_token?: string;
-  device_info?: {
-    device_id: string;
-    app_version: string;
-    os_version: string;
-  };
+  device_info?: DeviceInfo;
 }
 
 export interface AuthResponse {
@@ -42,7 +41,7 @@ export interface AuthResponse {
   expires_in: number;
   user: UserProfile;
   session_info: SessionInfo;
-  auth_config?: AuthRemoteConfig;
+  auth_config: AuthRemoteConfig;
 }
 
 export interface UserProfile {
@@ -50,11 +49,19 @@ export interface UserProfile {
   email: string;
   display_name: string;
   avatar_url?: string;
-  auth_provider: 'email' | 'google' | 'apple' | 'guest';
+  auth_provider: string;
   is_verified: boolean;
   created_at: string;
   last_login_at: string;
   preferences: UserPreferences;
+}
+
+export interface UserPreferences {
+  language?: string;
+  notification_enabled?: boolean;
+  auto_sync_enabled?: boolean;
+  theme?: 'light' | 'dark' | 'system';
+  [key: string]: any;
 }
 
 export interface SessionInfo {
@@ -66,16 +73,13 @@ export interface SessionInfo {
   expires_at: string;
 }
 
-export interface UserPreferences {
-  language: 'ko' | 'en';
-  notification_enabled: boolean;
-  auto_sync_enabled: boolean;
-  theme: 'light' | 'dark' | 'system';
+export interface DeviceInfo {
+  device_id?: string;
+  device_type?: string;
+  os_version?: string;
+  app_version?: string;
+  timezone?: string;
 }
-
-// ============================================================================
-// Firebase Remote Config Types
-// ============================================================================
 
 export interface AuthRemoteConfig {
   auth_methods_enabled: string;
@@ -90,12 +94,16 @@ export interface AuthRemoteConfig {
   deprecated_auth_notice: string;
 }
 
-export interface QuizRemoteConfig {
+// ============================================================================
+// Firebase Remote Config Types
+// ============================================================================
+
+export interface FirebaseRemoteConfigSettings {
   quiz_version: string;
   download_url: string;
   categories: string;
-  force_update: boolean;
-  maintenance_mode: boolean;
+  force_update: string;
+  maintenance_mode: string;
   min_app_version: string;
   feature_flags: string;
 }
@@ -104,21 +112,22 @@ export interface QuizRemoteConfig {
 // Quiz Data Types
 // ============================================================================
 
-export type QuizCategory = 'person' | 'general' | 'country' | 'drama' | 'music';
-export type QuizDifficulty = 'easy' | 'medium' | 'hard';
-export type QuizType = 'multiple_choice' | 'short_answer';
-
 export interface QuizQuestion {
   id: string;
+  category: string;
   question: string;
-  correct_answer: string;
-  options?: string[];
-  category: QuizCategory;
-  difficulty: QuizDifficulty;
-  type: QuizType;
+  options: string[];
+  correct_answer: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  tags?: string[];
+  explanation?: string;
   audio_url?: string;
-  version: string;
+  image_url?: string;
+  time_limit?: number;
+  points?: number;
+  is_active: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export interface QuizDataFile {
@@ -129,7 +138,8 @@ export interface QuizDataFile {
   categories: string[];
   meta: {
     last_updated: string;
-    source: 'database';
+    source: string;
+    [key: string]: any;
   };
 }
 
@@ -148,96 +158,196 @@ export interface QuizFileGenerationResponse {
 }
 
 // ============================================================================
-// Progress & Session Types
+// User Progress and Session Types
 // ============================================================================
-
-export interface QuizResult {
-  id: string;
-  user_id: string;
-  question_id: string;
-  user_answer: string;
-  is_correct: boolean;
-  time_spent: number;
-  completed_at: string;
-  category: string;
-  quiz_mode: string;
-}
 
 export interface QuizSession {
-  id: string;
+  session_id: string;
   user_id: string;
+  quiz_type: string;
   category: string;
-  mode: string;
+  status: 'started' | 'in_progress' | 'completed' | 'abandoned';
+  current_question: number;
   total_questions: number;
-  correct_answers: number;
-  total_time: number;
+  score: number;
+  time_spent: number; // seconds
   started_at: string;
   completed_at?: string;
-  results: QuizResult[];
+  updated_at: string;
+  metadata?: {
+    difficulty?: string;
+    mode?: string;
+    [key: string]: any;
+  };
 }
+
+export interface QuizResult {
+  result_id: string;
+  session_id: string;
+  user_id: string;
+  question_id: string;
+  selected_answer: number;
+  is_correct: boolean;
+  time_taken: number; // seconds
+  created_at: string;
+  metadata?: {
+    points_earned?: number;
+    bonus_applied?: boolean;
+    [key: string]: any;
+  };
+}
+
+export interface ProgressStats {
+  total_sessions: number;
+  completed_sessions: number;
+  completion_rate: number;
+  average_score: number;
+  total_time_spent: number;
+  total_questions_answered: number;
+  accuracy_rate: number;
+  streak_days: number;
+  last_activity: string;
+}
+
+// ============================================================================
+// Sync Types
+// ============================================================================
 
 export interface SyncRequest {
-  sessions: QuizSession[];
-  results: QuizResult[];
-  last_sync_at?: string;
+  last_sync_at: string;
+  quiz_sessions?: QuizSession[];
+  quiz_results?: QuizResult[];
+  force_sync?: boolean;
+}
+
+export interface SyncResponse {
+  success: boolean;
+  message: string;
+  sync_timestamp: string;
+  sync_results: {
+    synced_sessions: string[];
+    synced_results: string[];
+    failed_sessions: string[];
+    failed_results: string[];
+    conflicts: any[];
+  };
+  server_data: {
+    quiz_sessions: QuizSession[];
+    quiz_results: QuizResult[];
+    server_timestamp: string;
+  };
+  conflicts_resolved: boolean;
 }
 
 // ============================================================================
-// AI Generation Types
+// Leaderboard Types
 // ============================================================================
 
-export interface AIQuizRequest {
+export interface LeaderboardEntry {
+  rank: number;
+  user_id: string;
+  display_name: string;
+  avatar_url?: string;
+  stats: {
+    total_sessions: number;
+    completed_sessions: number;
+    average_score: number;
+    total_time_spent: number;
+    total_questions: number;
+    correct_answers: number;
+    accuracy_rate: number;
+    composite_score: number;
+  };
+  last_activity: string;
+}
+
+export interface LeaderboardResponse {
+  success: boolean;
+  leaderboard: LeaderboardEntry[];
+  user_rank?: {
+    rank: number;
+    total_users: number;
+    stats: any;
+  } | null;
+  category: string;
+  time_range: string;
+  total_entries: number;
+  generated_at: string;
+}
+
+// ============================================================================
+// AI Quiz Generation Types
+// ============================================================================
+
+export interface AIGenerationRequest {
   category: string;
   difficulty: 'easy' | 'medium' | 'hard';
-  type: 'multiple_choice' | 'short_answer';
   count: number;
-  language: 'ko' | 'en';
+  topic?: string;
+  style?: string;
+  language?: string;
 }
 
-export interface AIQuizResponse {
-  questions: QuizQuestion[];
-  generation_time: number;
-  tokens_used: number;
+export interface AIGenerationResponse {
+  success: boolean;
+  generated_questions: QuizQuestion[];
+  generation_info: {
+    model_used: string;
+    tokens_used: number;
+    generation_time: number;
+    cost_estimate: number;
+  };
+  generated_at: string;
 }
 
 // ============================================================================
-// Security & Monitoring Types
+// Security and Logging Types
 // ============================================================================
 
 export interface SecurityEvent {
-  event_type: 'login_success' | 'login_failure' | 'password_reset' | 'suspicious_activity';
+  id: string;
   user_id?: string;
+  event_type: string;
   ip_address: string;
   user_agent: string;
-  device_id?: string;
   timestamp: string;
   details: any;
 }
 
-export interface LogEvent {
-  level: 'info' | 'warn' | 'error' | 'debug';
-  message: string;
-  function_name: string;
-  user_id?: string;
-  request_id: string;
+export interface LogEntry {
+  level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
   timestamp: string;
-  metadata?: any;
+  function_name: string;
+  message: string;
+  context?: any;
+  duration?: number;
+  error?: any;
 }
 
+// ============================================================================
+// Health Check Types
+// ============================================================================
+
 export interface HealthCheck {
-  status: 'healthy' | 'degraded' | 'unhealthy';
+  status: 'healthy' | 'unhealthy';
   timestamp: string;
   services: {
-    database: { status: string; response_time: number; error?: string };
-    auth: { status: string; response_time: number; error?: string };
-    storage: { status: string; response_time: number; error?: string };
-    firebase: { status: string; response_time: number; error?: string };
+    database: ServiceHealth;
+    auth: ServiceHealth;
+    storage: ServiceHealth;
+    firebase: ServiceHealth;
   };
   total_response_time: number;
 }
 
+export interface ServiceHealth {
+  status: 'healthy' | 'unhealthy';
+  response_time: number;
+  error?: string;
+}
+
 // ============================================================================
-// Database Schema Types
+// Database User Model
 // ============================================================================
 
 export interface DatabaseUser {
@@ -248,45 +358,62 @@ export interface DatabaseUser {
   auth_provider: string;
   is_verified: boolean;
   is_active: boolean;
-  account_status: 'active' | 'suspended' | 'locked';
-  last_login_at?: string;
+  account_status: 'active' | 'suspended' | 'pending';
   login_count: number;
   failed_login_attempts: number;
-  locked_until?: string;
-  preferences: Record<string, any>;
-  feature_flags: Record<string, any>;
-  metadata: Record<string, any>;
+  last_login_at?: string;
+  preferences: any;
+  feature_flags: any;
+  metadata: any;
   created_at: string;
   updated_at: string;
-  last_sync_at?: string;
 }
 
 // ============================================================================
-// Error Types
+// Error Code Enum
 // ============================================================================
 
 export enum ErrorCodes {
-  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  // General
+  INVALID_REQUEST = 'INVALID_REQUEST',
+  INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
+  METHOD_NOT_ALLOWED = 'METHOD_NOT_ALLOWED',
+  
+  // Authentication
   AUTHENTICATION_FAILED = 'AUTHENTICATION_FAILED',
   AUTHORIZATION_FAILED = 'AUTHORIZATION_FAILED',
-  RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
-  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
-  INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
-  EXTERNAL_SERVICE_ERROR = 'EXTERNAL_SERVICE_ERROR',
-  INVALID_INPUT = 'INVALID_INPUT',
+  INVALID_CREDENTIALS = 'INVALID_CREDENTIALS',
   ACCOUNT_LOCKED = 'ACCOUNT_LOCKED',
   SESSION_EXPIRED = 'SESSION_EXPIRED',
-  MAINTENANCE_MODE = 'MAINTENANCE_MODE'
+  
+  // Data
+  DATA_NOT_FOUND = 'DATA_NOT_FOUND',
+  DATA_VALIDATION_FAILED = 'DATA_VALIDATION_FAILED',
+  DUPLICATE_DATA = 'DUPLICATE_DATA',
+  
+  // Business Logic
+  QUIZ_NOT_AVAILABLE = 'QUIZ_NOT_AVAILABLE',
+  SESSION_EXPIRED_OR_INVALID = 'SESSION_EXPIRED_OR_INVALID',
+  SYNC_CONFLICT = 'SYNC_CONFLICT',
+  
+  // External Services
+  FIREBASE_ERROR = 'FIREBASE_ERROR',
+  AI_SERVICE_ERROR = 'AI_SERVICE_ERROR',
+  STORAGE_ERROR = 'STORAGE_ERROR'
 }
 
-export class APIError extends Error {
-  constructor(
-    public code: ErrorCodes,
-    message: string,
-    public statusCode: number = 500,
-    public details?: any
-  ) {
-    super(message);
-    this.name = 'APIError';
-  }
+// ============================================================================
+// Utility Types
+// ============================================================================
+
+export type JSONValue = string | number | boolean | null | JSONObject | JSONArray;
+export interface JSONObject {
+  [key: string]: JSONValue;
+}
+export interface JSONArray extends Array<JSONValue> {}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: PaginationInfo;
+  total_count: number;
 } 

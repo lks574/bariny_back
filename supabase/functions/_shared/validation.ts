@@ -5,132 +5,137 @@ import type { QuizCategory, QuizDifficulty, QuizType } from './types.ts';
 // Common Validation Schemas
 // ============================================================================
 
-export const UUIDSchema = z.string().uuid('올바른 UUID 형식이 아닙니다');
+export const UUIDSchema = z.string().uuid('유효한 UUID가 아닙니다');
 
-export const EmailSchema = z.string().email('올바른 이메일 형식이 아닙니다');
+export const EmailSchema = z.string()
+  .email('유효한 이메일 주소가 아닙니다')
+  .min(5, '이메일은 최소 5자 이상이어야 합니다')
+  .max(255, '이메일은 최대 255자까지 가능합니다');
 
 export const PasswordSchema = z.string()
   .min(8, '비밀번호는 최소 8자 이상이어야 합니다')
-  .max(100, '비밀번호는 최대 100자까지 가능합니다')
-  .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 
-    '비밀번호는 영문 대소문자와 숫자를 포함해야 합니다');
+  .max(128, '비밀번호는 최대 128자까지 가능합니다')
+  .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, '영문 대소문자와 숫자를 포함해야 합니다');
 
 export const DeviceInfoSchema = z.object({
-  device_id: z.string().min(1, '기기 ID는 필수입니다'),
-  app_version: z.string().regex(/^\d+\.\d+\.\d+$/, '올바른 앱 버전 형식이 아닙니다'),
-  os_version: z.string().min(1, 'OS 버전은 필수입니다')
+  device_id: z.string().optional(),
+  device_type: z.string().optional(),
+  os_version: z.string().optional(),
+  app_version: z.string().optional(),
+  timezone: z.string().optional()
 });
 
 // ============================================================================
 // Authentication Schemas
 // ============================================================================
 
-export const AuthSignupSchema = z.object({
+export const SignupRequestSchema = z.object({
   email: EmailSchema,
   password: PasswordSchema,
-  provider: z.enum(['email', 'google', 'apple']).optional().default('email'),
-  device_info: DeviceInfoSchema.optional()
-});
-
-export const AuthSigninSchema = z.object({
-  email: EmailSchema,
-  password: z.string().min(1, '비밀번호는 필수입니다'),
-  provider: z.enum(['email', 'google', 'apple']).optional().default('email'),
+  provider: z.enum(['email', 'google', 'apple']).default('email'),
   oauth_token: z.string().optional(),
   device_info: DeviceInfoSchema.optional()
 });
 
-export const AuthGuestSchema = z.object({
-  device_info: DeviceInfoSchema
+export const SigninRequestSchema = z.object({
+  email: EmailSchema.optional(),
+  password: z.string().optional(),
+  provider: z.enum(['email', 'google', 'apple', 'guest']).default('email'),
+  oauth_token: z.string().optional(),
+  device_info: DeviceInfoSchema.optional()
 });
 
-export const PasswordResetSchema = z.object({
+export const GuestSigninRequestSchema = z.object({
+  provider: z.literal('guest'),
+  device_info: DeviceInfoSchema.optional()
+});
+
+export const PasswordResetRequestSchema = z.object({
   email: EmailSchema
 });
 
-export const UserUpdateSchema = z.object({
-  display_name: z.string().min(1, '사용자명은 필수입니다').max(100, '사용자명은 최대 100자까지 가능합니다').optional(),
-  avatar_url: z.string().url('올바른 URL 형식이 아닙니다').optional(),
-  preferences: z.object({
-    language: z.enum(['ko', 'en']).optional(),
-    notification_enabled: z.boolean().optional(),
-    auto_sync_enabled: z.boolean().optional(),
-    theme: z.enum(['light', 'dark', 'system']).optional()
-  }).optional()
+export const UserUpdateRequestSchema = z.object({
+  display_name: z.string().min(1).max(100).optional(),
+  preferences: z.record(z.any()).optional(),
+  avatar_url: z.string().url().optional()
 });
 
 // ============================================================================
 // Quiz Data Schemas
 // ============================================================================
 
-export const QuizCategorySchema = z.enum(['person', 'general', 'country', 'drama', 'music']);
-export const QuizDifficultySchema = z.enum(['easy', 'medium', 'hard']);
-export const QuizTypeSchema = z.enum(['multiple_choice', 'short_answer']);
-
 export const QuizQuestionSchema = z.object({
-  question: z.string()
-    .min(10, '문제는 최소 10자 이상이어야 합니다')
-    .max(500, '문제는 최대 500자까지 가능합니다'),
-  correct_answer: z.string()
-    .min(1, '정답은 필수입니다')
-    .max(200, '정답은 최대 200자까지 가능합니다'),
-  options: z.array(z.string().max(100, '선택지는 최대 100자까지 가능합니다'))
-    .min(2, '최소 2개의 선택지가 필요합니다')
-    .max(6, '최대 6개의 선택지까지 가능합니다')
-    .optional(),
-  category: QuizCategorySchema,
-  difficulty: QuizDifficultySchema,
-  type: QuizTypeSchema,
-  audio_url: z.string().url('올바른 URL 형식이 아닙니다').optional()
+  id: UUIDSchema,
+  category: z.string().min(1).max(50),
+  question: z.string().min(1).max(1000),
+  options: z.array(z.string()).min(2).max(6),
+  correct_answer: z.number().int().min(0),
+  difficulty: z.enum(['easy', 'medium', 'hard']),
+  tags: z.array(z.string()).optional(),
+  explanation: z.string().max(500).optional(),
+  audio_url: z.string().url().optional(),
+  image_url: z.string().url().optional(),
+  time_limit: z.number().int().positive().optional(),
+  points: z.number().int().positive().optional(),
+  is_active: z.boolean().default(true)
 });
-
-export const QuizQuestionUpdateSchema = QuizQuestionSchema.partial();
 
 export const QuizBulkImportSchema = z.object({
-  questions: z.array(QuizQuestionSchema).min(1, '최소 1개의 문제가 필요합니다').max(1000, '한 번에 최대 1000개까지 가져올 수 있습니다')
+  questions: z.array(QuizQuestionSchema).min(1).max(1000),
+  category: z.string().min(1).max(50),
+  overwrite_existing: z.boolean().default(false)
 });
 
 // ============================================================================
-// Progress & Session Schemas
+// Progress and Session Schemas
 // ============================================================================
-
-export const QuizResultSchema = z.object({
-  question_id: UUIDSchema,
-  user_answer: z.string().min(1, '사용자 답안은 필수입니다').max(200, '답안은 최대 200자까지 가능합니다'),
-  is_correct: z.boolean(),
-  time_spent: z.number().min(0, '소요 시간은 0 이상이어야 합니다').max(3600, '소요 시간은 최대 1시간까지 가능합니다'),
-  completed_at: z.string().datetime('올바른 날짜 형식이 아닙니다'),
-  category: QuizCategorySchema,
-  quiz_mode: z.string().min(1, '퀴즈 모드는 필수입니다').max(50, '퀴즈 모드는 최대 50자까지 가능합니다')
-});
 
 export const QuizSessionSchema = z.object({
-  category: QuizCategorySchema,
-  mode: z.string().min(1, '모드는 필수입니다').max(50, '모드는 최대 50자까지 가능합니다'),
-  total_questions: z.number().min(1, '총 문제 수는 1 이상이어야 합니다').max(100, '총 문제 수는 최대 100개까지 가능합니다'),
-  correct_answers: z.number().min(0, '정답 수는 0 이상이어야 합니다'),
-  total_time: z.number().min(0, '총 소요 시간은 0 이상이어야 합니다'),
-  started_at: z.string().datetime('올바른 날짜 형식이 아닙니다'),
-  completed_at: z.string().datetime('올바른 날짜 형식이 아닙니다').optional(),
-  results: z.array(QuizResultSchema)
+  session_id: UUIDSchema,
+  user_id: UUIDSchema,
+  quiz_type: z.string().min(1).max(50),
+  category: z.string().min(1).max(50),
+  status: z.enum(['started', 'in_progress', 'completed', 'abandoned']),
+  current_question: z.number().int().min(0),
+  total_questions: z.number().int().positive(),
+  score: z.number().min(0).max(100),
+  time_spent: z.number().int().min(0),
+  started_at: z.string().datetime(),
+  completed_at: z.string().datetime().optional(),
+  updated_at: z.string().datetime(),
+  metadata: z.record(z.any()).optional()
+});
+
+export const QuizResultSchema = z.object({
+  result_id: UUIDSchema,
+  session_id: UUIDSchema,
+  user_id: UUIDSchema,
+  question_id: UUIDSchema,
+  selected_answer: z.number().int().min(0),
+  is_correct: z.boolean(),
+  time_taken: z.number().min(0),
+  created_at: z.string().datetime(),
+  metadata: z.record(z.any()).optional()
 });
 
 export const SyncRequestSchema = z.object({
-  sessions: z.array(QuizSessionSchema).max(100, '한 번에 최대 100개 세션까지 동기화할 수 있습니다'),
-  results: z.array(QuizResultSchema).max(1000, '한 번에 최대 1000개 결과까지 동기화할 수 있습니다'),
-  last_sync_at: z.string().datetime('올바른 날짜 형식이 아닙니다').optional()
+  last_sync_at: z.string().datetime(),
+  quiz_sessions: z.array(QuizSessionSchema).optional(),
+  quiz_results: z.array(QuizResultSchema).optional(),
+  force_sync: z.boolean().default(false)
 });
 
 // ============================================================================
 // AI Generation Schemas
 // ============================================================================
 
-export const AIQuizRequestSchema = z.object({
-  category: QuizCategorySchema,
-  difficulty: QuizDifficultySchema,
-  type: QuizTypeSchema,
-  count: z.number().min(1, '최소 1개의 문제를 생성해야 합니다').max(10, '한 번에 최대 10개까지 생성할 수 있습니다'),
-  language: z.enum(['ko', 'en']).default('ko')
+export const AIGenerationRequestSchema = z.object({
+  category: z.string().min(1).max(50),
+  difficulty: z.enum(['easy', 'medium', 'hard']),
+  count: z.number().int().min(1).max(50),
+  topic: z.string().max(200).optional(),
+  style: z.string().max(100).optional(),
+  language: z.string().min(2).max(10).default('ko')
 });
 
 // ============================================================================
@@ -138,91 +143,200 @@ export const AIQuizRequestSchema = z.object({
 // ============================================================================
 
 export const PaginationSchema = z.object({
-  page: z.number().min(1, '페이지는 1 이상이어야 합니다').default(1),
-  per_page: z.number().min(1, '페이지당 항목 수는 1 이상이어야 합니다').max(100, '페이지당 최대 100개까지 가능합니다').default(20)
+  limit: z.number().int().min(1).max(100).default(20),
+  offset: z.number().int().min(0).default(0)
 });
 
-export const DateRangeSchema = z.object({
-  start_date: z.string().datetime('올바른 시작 날짜 형식이 아닙니다').optional(),
-  end_date: z.string().datetime('올바른 종료 날짜 형식이 아닙니다').optional()
-}).refine(data => {
-  if (data.start_date && data.end_date) {
-    return new Date(data.start_date) <= new Date(data.end_date);
-  }
-  return true;
-}, {
-  message: '시작 날짜는 종료 날짜보다 이전이어야 합니다'
+export const FilterSchema = z.object({
+  category: z.string().optional(),
+  difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+  start_date: z.string().datetime().optional(),
+  end_date: z.string().datetime().optional(),
+  search: z.string().max(100).optional()
 });
 
-export const HistoryFilterSchema = z.object({
-  category: QuizCategorySchema.optional(),
-  mode: z.string().max(50, '모드는 최대 50자까지 가능합니다').optional(),
-  ...PaginationSchema.shape,
-  ...DateRangeSchema.shape
+export const SortSchema = z.object({
+  field: z.string().min(1).max(50),
+  order: z.enum(['asc', 'desc']).default('desc')
+});
+
+// ============================================================================
+// Leaderboard Schemas
+// ============================================================================
+
+export const LeaderboardQuerySchema = z.object({
+  category: z.string().default('all'),
+  time_range: z.enum(['all', 'week', 'month']).default('all'),
+  limit: z.number().int().min(1).max(100).default(50),
+  include_user_rank: z.boolean().default(false)
+});
+
+// ============================================================================
+// Admin Schemas
+// ============================================================================
+
+export const AdminQuizCreateSchema = z.object({
+  questions: z.array(QuizQuestionSchema).min(1),
+  auto_publish: z.boolean().default(false),
+  notify_users: z.boolean().default(false)
+});
+
+export const AdminUserUpdateSchema = z.object({
+  user_id: UUIDSchema,
+  is_active: z.boolean().optional(),
+  account_status: z.enum(['active', 'suspended', 'pending']).optional(),
+  role: z.enum(['user', 'admin', 'moderator']).optional(),
+  feature_flags: z.record(z.any()).optional()
 });
 
 // ============================================================================
 // Validation Utility Functions
 // ============================================================================
 
-export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown): T {
+export interface ValidationResult<T = any> {
+  success: boolean;
+  data?: T;
+  errors?: string[];
+}
+
+export async function validateInput<T>(
+  input: unknown,
+  schemaType: string
+): Promise<ValidationResult<T>> {
   try {
-    return schema.parse(data);
+    let schema: z.ZodSchema;
+
+    switch (schemaType) {
+      case 'signup':
+        schema = SignupRequestSchema;
+        break;
+      case 'signin':
+        schema = SigninRequestSchema;
+        break;
+      case 'guestSignin':
+        schema = GuestSigninRequestSchema;
+        break;
+      case 'passwordReset':
+        schema = PasswordResetRequestSchema;
+        break;
+      case 'userUpdate':
+        schema = UserUpdateRequestSchema;
+        break;
+      case 'quizQuestion':
+        schema = QuizQuestionSchema;
+        break;
+      case 'quizBulkImport':
+        schema = QuizBulkImportSchema;
+        break;
+      case 'quizSession':
+        schema = QuizSessionSchema;
+        break;
+      case 'quizResult':
+        schema = QuizResultSchema;
+        break;
+      case 'syncRequest':
+        schema = SyncRequestSchema;
+        break;
+      case 'aiGeneration':
+        schema = AIGenerationRequestSchema;
+        break;
+      case 'pagination':
+        schema = PaginationSchema;
+        break;
+      case 'filter':
+        schema = FilterSchema;
+        break;
+      case 'sort':
+        schema = SortSchema;
+        break;
+      case 'leaderboardQuery':
+        schema = LeaderboardQuerySchema;
+        break;
+      case 'adminQuizCreate':
+        schema = AdminQuizCreateSchema;
+        break;
+      case 'adminUserUpdate':
+        schema = AdminUserUpdateSchema;
+        break;
+      default:
+        return {
+          success: false,
+          errors: [`알 수 없는 스키마 타입: ${schemaType}`]
+        };
+    }
+
+    const result = schema.parse(input);
+    return {
+      success: true,
+      data: result as T
+    };
+
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const messages = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-      throw new Error(`입력 검증 실패: ${messages}`);
+      return {
+        success: false,
+        errors: error.errors.map(err => `${err.path.join('.')}: ${err.message}`)
+      };
     }
-    throw error;
+
+    return {
+      success: false,
+      errors: ['유효성 검사 중 알 수 없는 오류가 발생했습니다']
+    };
   }
 }
 
-export function validateQuery<T>(schema: z.ZodSchema<T>, url: URL): T {
-  const params: Record<string, any> = {};
-  
-  // URL search params를 적절한 타입으로 변환
-  for (const [key, value] of url.searchParams.entries()) {
-    // 숫자 변환 시도
-    if (!isNaN(Number(value))) {
-      params[key] = Number(value);
+export async function validateQuery(
+  url: URL,
+  schemaType: string
+): Promise<ValidationResult> {
+  try {
+    const params: Record<string, any> = {};
+    
+    for (const [key, value] of url.searchParams.entries()) {
+      // 숫자 변환 시도
+      if (/^\d+$/.test(value)) {
+        params[key] = parseInt(value);
+      } else if (/^\d+\.\d+$/.test(value)) {
+        params[key] = parseFloat(value);
+      } else if (value === 'true' || value === 'false') {
+        params[key] = value === 'true';
+      } else {
+        params[key] = value;
+      }
     }
-    // boolean 변환 시도
-    else if (value === 'true') {
-      params[key] = true;
-    }
-    else if (value === 'false') {
-      params[key] = false;
-    }
-    // 그 외에는 문자열 그대로
-    else {
-      params[key] = value;
-    }
-  }
 
-  return validateInput(schema, params);
+    return await validateInput(params, schemaType);
+  } catch (error) {
+    return {
+      success: false,
+      errors: ['쿼리 파라미터 검증 실패']
+    };
+  }
 }
 
-export function sanitizeString(input: string): string {
+export function sanitizeString(input: string, maxLength: number = 1000): string {
   return input
     .trim()
-    .replace(/[<>]/g, '') // Remove potential HTML tags
-    .replace(/[\x00-\x1F\x7F]/g, ''); // Remove control characters
+    .replace(/[<>]/g, '') // 기본 XSS 방지
+    .substring(0, maxLength);
 }
 
-export function validateAndSanitize<T extends Record<string, any>>(
-  schema: z.ZodSchema<T>, 
-  data: unknown
-): T {
-  const validated = validateInput(schema, data);
-  
-  // Sanitize string fields
-  if (validated && typeof validated === 'object') {
-    Object.keys(validated).forEach(key => {
-      if (typeof validated[key] === 'string') {
-        (validated as any)[key] = sanitizeString(validated[key]);
+export function validateAndSanitize<T>(
+  input: any,
+  schemaType: string,
+  sanitizeFields?: string[]
+): Promise<ValidationResult<T>> {
+  // 문자열 필드 정리
+  if (sanitizeFields && typeof input === 'object' && input !== null) {
+    const sanitized = { ...input };
+    for (const field of sanitizeFields) {
+      if (typeof sanitized[field] === 'string') {
+        sanitized[field] = sanitizeString(sanitized[field]);
       }
-    });
+    }
+    return validateInput<T>(sanitized, schemaType);
   }
-  
-  return validated;
+
+  return validateInput<T>(input, schemaType);
 } 
