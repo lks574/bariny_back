@@ -1,0 +1,192 @@
+# Implementation Plan
+
+- [ ] 0. Pre-Deployment 준비 작업 (🚨 필수 우선 실행)
+  - 환경 변수 설정 파일 작성 (.env.development, .env.production)
+  - CORS 및 보안 헤더 공통 모듈 구현
+  - 입력 검증 스키마 및 Zod 라이브러리 설정
+  - 로깅 및 메트릭 수집 공통 모듈 구현
+  - OpenAPI 3.0 문서 스펙 작성
+  - Firebase Remote Config 초기 설정값 준비
+  - 헬스체크 엔드포인트 구현
+  - 기본 테스트 구조 및 CI/CD 파이프라인 설정
+  - Supabase Storage 버킷 생성 (quiz-files, quiz-audio)
+  - _Requirements: 모든 요구사항의 기반_
+
+- [ ] 1. Supabase 프로젝트 초기 설정
+  - Supabase 프로젝트 생성 및 기본 구성
+  - 환경 변수 설정 (개발/프로덕션)
+  - 데이터베이스 연결 확인 및 기본 설정
+  - Supabase CLI 설치 및 로컬 개발 환경 구성
+  - _Requirements: 8.1, 8.8_
+
+- [ ] 2. 강화된 데이터베이스 스키마 구현
+  - Enhanced Users Table (계정 상태, 보안 정보, 사용자 설정) 생성
+  - User Sessions Table (세션 관리, 기기 추적) 생성
+  - Security Events Table (보안 이벤트 로깅, 감사) 생성
+  - User Permissions Table (권한 관리, 할당량 제어) 생성
+  - 기존 테이블: quiz_questions, quiz_results, quiz_sessions, quiz_versions 생성
+  - 성능 최적화 인덱스 및 제약조건 설정
+  - 강화된 Row Level Security (RLS) 정책 구현 (게스트, 관리자, 세션 기반)
+  - 데이터베이스 마이그레이션 스크립트 작성 및 버전 관리
+  - 보안 감사를 위한 트리거 및 함수 구현
+  - _Requirements: 1.11, 1.12, 3.1, 3.2, 8.5_
+
+- [ ] 3. Firebase Remote Config 통합 인증 시스템 구현
+  - Firebase Remote Config에 인증 관련 설정값 추가 및 구성
+  - Supabase Auth 기본 설정 및 구성 (이메일, Google, Apple 로그인)
+  - Firebase Remote Config 기반 인증 설정 동적 로딩 시스템 구현
+  - 이메일/비밀번호 인증 with 동적 비밀번호 정책 구현
+  - Google OAuth 연동 with 동적 허용/차단 기능 구현
+  - Apple Sign-in 연동 with 동적 허용/차단 기능 구현
+  - 게스트 로그인 기능 with Remote Config 제어 구현
+  - JWT 토큰 검증 미들웨어 with 확장된 세션 정보 구현
+  - 세션 타임아웃 및 자동 갱신 로직 구현
+  - 보안 강화: Rate Limiting, 로그인 시도 제한, 이상 탐지 구현
+  - 앱 버전 호환성 검증 및 강제 업데이트 로직 구현
+  - 보안 이벤트 로깅 및 모니터링 시스템 구현
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11, 1.12_
+
+- [ ] 4. 기본 API 구조 및 미들웨어 구현
+  - Supabase Edge Functions 프로젝트 구조 생성
+  - 공통 응답 형식 및 에러 핸들링 구현
+  - 요청 검증 미들웨어 구현
+  - Rate Limiting 미들웨어 구현
+  - CORS 설정 및 보안 헤더 구현
+  - _Requirements: 8.1, 8.5_
+
+- [ ] 5. 퀴즈 데이터 관리 API 구현
+  - Firebase Remote Config 프로젝트 설정 및 서비스 키 발급
+  - Firebase Admin SDK를 통한 Remote Config 자동 업데이트 시스템 구현
+  - DB → JSON 파일 생성 및 Storage 업로드 엔드포인트 구현
+  - 카테고리별 퀴즈 조회 엔드포인트 구현
+  - 정적 파일 CDN 서빙을 통한 비용 최적화 구현
+  - Storage 버킷 설정 및 공개 URL 생성 로직 구현
+  - JSON 파일 생성 후 Firebase Remote Config 자동 업데이트 로직 구현
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.6, 2.7, 2.8_
+
+- [ ] 6. 사용자 진행 상황 동기화 API 구현
+  - 진행 상황 업로드 엔드포인트 구현
+  - 진행 상황 다운로드 엔드포인트 구현
+  - 배치 동기화 엔드포인트 구현
+  - 동기화 충돌 해결 로직 구현
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [ ] 7. 퀴즈 히스토리 조회 API 구현
+  - 사용자 히스토리 목록 조회 엔드포인트 구현
+  - 기간별/카테고리별 필터링 기능 구현
+  - 히스토리 상세 조회 엔드포인트 구현
+  - 통계 데이터 계산 및 조회 엔드포인트 구현
+  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
+
+- [ ] 8. AI 퀴즈 생성 시스템 구현
+  - OpenAI API 연동 및 설정
+  - AI 퀴즈 생성 엔드포인트 구현
+  - 생성된 퀴즈 검증 로직 구현
+  - AI 생성 실패 시 폴백 로직 구현
+  - AI 사용량 추적 및 제한 구현
+  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+
+- [ ] 9. 실시간 기능 구현
+  - Supabase Realtime 설정 및 구성
+  - 퀴즈 데이터 업데이트 실시간 알림 구현
+  - 사용자 진행 상황 실시간 업데이트 구현
+  - 실시간 연결 관리 및 재연결 로직 구현
+  - _Requirements: 6.1, 6.2, 6.3, 6.4_
+
+- [ ] 10. 관리자 기능 구현
+  - 관리자 인증 및 권한 관리 구현
+  - 퀴즈 CRUD 관리 엔드포인트 구현
+  - 사용자 통계 조회 엔드포인트 구현
+  - 퀴즈 대량 가져오기 기능 구현
+  - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+
+- [ ] 11. 파일 저장소 및 미디어 관리 구현
+  - Supabase Storage 설정 및 구성 (quiz-files 버킷 생성)
+  - 음성 파일 업로드/다운로드 API 구현
+  - JSON 파일 자동 생성 및 업로드 로직 구현
+  - 파일 압축 및 최적화 로직 구현
+  - CDN 연동 및 캐싱 설정 (24시간 캐싱)
+  - 정적 파일 공개 URL 관리 시스템 구현
+  - _Requirements: 2.5, 2.6_
+
+- [ ] 12. 성능 최적화 및 캐싱 구현
+  - 정적 파일 서빙을 통한 함수 호출 최소화 (90% 비용 절감)
+  - 데이터베이스 쿼리 최적화
+  - CDN 캐싱을 활용한 전송 속도 최적화
+  - JSON 파일 생성 주기 최적화 (데이터 변경 시에만)
+  - 연결 풀링 및 리소스 관리 구현
+  - _Requirements: 8.4_
+
+- [ ] 13. 보안 강화 구현
+  - 입력 데이터 검증 및 새니타이제이션 구현
+  - SQL 인젝션 방지 로직 구현
+  - API 보안 헤더 설정
+  - 보안 로깅 및 모니터링 구현
+  - _Requirements: 8.5_
+
+- [ ] 14. 모니터링 및 로깅 시스템 구현
+  - 헬스체크 엔드포인트 구현
+  - 애플리케이션 메트릭 수집 구현
+  - 에러 로깅 및 알림 시스템 구현
+  - 성능 모니터링 대시보드 설정
+  - _Requirements: 8.8_
+
+- [ ] 15. 테스트 코드 작성
+  - 단위 테스트 작성 (Edge Functions)
+  - 통합 테스트 작성 (API 엔드포인트)
+  - 데이터베이스 테스트 작성
+  - 부하 테스트 시나리오 구현
+  - _Requirements: 8.1_
+
+- [ ] 16. API 문서화 및 개발자 도구
+  - OpenAPI/Swagger 문서 생성
+  - Postman 컬렉션 생성
+  - API 사용 예제 및 가이드 작성
+  - 개발자 포털 설정
+  - _Requirements: 8.1_
+
+- [ ] 17. 데이터 마이그레이션 및 시드 데이터 구현
+  - 기존 퀴즈 데이터 마이그레이션 스크립트 작성
+  - 테스트용 시드 데이터 생성
+  - 데이터 검증 및 정합성 체크 구현
+  - 백업 및 복원 프로세스 구현
+  - _Requirements: 8.7_
+
+- [ ] 18. 배포 및 CI/CD 파이프라인 구현
+  - GitHub Actions 워크플로우 설정
+  - 자동 테스트 및 배포 파이프라인 구현
+  - 환경별 배포 설정 (개발/스테이징/프로덕션)
+  - 롤백 및 블루-그린 배포 전략 구현
+  - _Requirements: 8.6_
+
+- [ ] 19. 에러 처리 및 복구 시스템 구현
+  - 전역 에러 핸들러 구현
+  - 자동 재시도 로직 구현
+  - 서킷 브레이커 패턴 구현
+  - 장애 복구 및 알림 시스템 구현
+  - _Requirements: 8.2, 8.3_
+
+- [ ] 20. 최종 통합 테스트 및 성능 튜닝
+  - 전체 시스템 통합 테스트 실행
+  - 성능 병목 지점 분석 및 최적화
+  - 보안 취약점 스캔 및 수정
+  - 프로덕션 배포 준비 및 최종 검증
+  - _Requirements: 8.1, 8.4, 8.5, 8.6_
+
+- [ ] 21. Firebase Remote Config 완전 연동 구현
+  - Firebase 프로젝트 생성 및 Remote Config 초기 설정
+  - Firebase Admin SDK 설치 및 서비스 계정 키 설정
+  - Supabase Edge Function에서 Firebase Admin API 연동
+  - 퀴즈 데이터 업데이트 시 Remote Config 자동 업데이트 로직 구현
+  - iOS 앱에서 Firebase Remote Config 연동 가이드 작성
+  - 실시간 설정 업데이트 및 캐싱 전략 구현
+  - _Requirements: 9.1, 9.4, 9.5_
+
+- [ ] 22. Firebase Remote Config 고급 기능 구현
+  - 조건부 배포 설정 (iOS 버전별, 사용자 그룹별)
+  - A/B 테스트를 통한 점진적 롤아웃 지원
+  - force_update 및 maintenance_mode 기능 구현
+  - feature_flags를 통한 기능 토글 시스템 구현
+  - Remote Config 값 검증 및 롤백 시스템 구현
+  - 설정 변경 로그 및 모니터링 대시보드 구현
+  - _Requirements: 2.7, 2.8, 9.1_

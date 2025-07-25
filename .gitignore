@@ -1,0 +1,74 @@
+# macOS 시스템 파일
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE 및 도구 설정
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 로그 파일
+*.log
+logs/
+
+# 환경 변수 파일
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 의존성 디렉토리
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python 관련
+*.pyc
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Java 관련
+*.class
+target/
+*.jar
+*.war
+*.ear
+
+# 빌드 및 컴파일 결과물
+dist/
+build/
+out/
+
+# 데이터베이스 파일
+*.db
+*.sqlite
+*.sqlite3
+
+# 백업 파일
+*.bak
+*.tmp
+*.temp
+
+# 운영체제별 파일
+# Windows
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~ 
