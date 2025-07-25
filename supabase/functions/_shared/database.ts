@@ -10,8 +10,8 @@ let supabaseClient: SupabaseClient | null = null;
 
 export function getSupabaseClient(): SupabaseClient {
   if (!supabaseClient) {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseUrl = (globalThis as any).Deno?.env.get('SUPABASE_URL');
+    const supabaseServiceKey = (globalThis as any).Deno?.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Supabase 환경 변수가 설정되지 않았습니다');
@@ -32,14 +32,56 @@ export function getSupabaseClient(): SupabaseClient {
 }
 
 // ============================================================================
-// Database Query Helpers
+// Database Query Helpers (올바른 시그니처)
 // ============================================================================
 
-export async function executeQuery<T>(
+export async function executeQuery(
+  logger: Logger,
+  sql: string,
+  params: any[] = []
+): Promise<{ data: any; error: any }> {
+  const timer = measurePerformance(logger, 'db_query');
+  
+  try {
+    const client = getSupabaseClient();
+    
+    // Supabase의 rpc 함수를 사용하여 SQL 실행
+    const { data, error } = await client.rpc('execute_sql', {
+      sql_query: sql,
+      sql_params: params
+    });
+    
+    if (error) {
+      timer.end(false);
+      logger.error('데이터베이스 쿼리 실패', {
+        sql: sql.substring(0, 100),
+        error_message: error.message,
+        error_details: error.details,
+        error_hint: error.hint
+      });
+      return { data: null, error };
+    }
+
+    timer.end(true);
+    logger.debug('데이터베이스 쿼리 성공', {
+      sql: sql.substring(0, 100),
+      rows_affected: Array.isArray(data) ? data.length : 1
+    });
+    
+    return { data, error: null };
+  } catch (error) {
+    timer.end(false);
+    logError(logger, error, { sql: sql.substring(0, 100) });
+    return { data: null, error };
+  }
+}
+
+// Supabase ORM 기반 쿼리 헬퍼
+export async function executeSupabaseQuery<T>(
   logger: Logger,
   queryName: string,
   queryFn: () => Promise<{ data: T | null; error: any }>
-): Promise<T> {
+): Promise<{ data: T | null; error: any }> {
   const timer = measurePerformance(logger, `db_query_${queryName}`);
   
   try {
@@ -52,17 +94,17 @@ export async function executeQuery<T>(
         error_details: error.details,
         error_hint: error.hint
       });
-      throw new Error(`데이터베이스 오류: ${error.message}`);
+      return { data: null, error };
     }
 
     timer.end(true);
     logger.debug(`데이터베이스 쿼리 성공: ${queryName}`);
     
-    return data!;
+    return { data, error: null };
   } catch (error) {
     timer.end(false);
     logError(logger, error, { query_name: queryName });
-    throw error;
+    return { data: null, error };
   }
 }
 
@@ -102,7 +144,7 @@ export async function executeTransaction<T>(
 // ============================================================================
 
 export async function getUserById(logger: Logger, userId: string) {
-  return executeQuery(logger, 'get_user_by_id', async () => {
+  return executeSupabaseQuery(logger, 'get_user_by_id', async () => {
     const client = getSupabaseClient();
     return await client
       .from('users')
@@ -113,7 +155,7 @@ export async function getUserById(logger: Logger, userId: string) {
 }
 
 export async function updateUserLastLogin(logger: Logger, userId: string) {
-  return executeQuery(logger, 'update_user_last_login', async () => {
+  return executeSupabaseQuery(logger, 'update_user_last_login', async () => {
     const client = getSupabaseClient();
     return await client
       .from('users')
@@ -133,11 +175,12 @@ export async function createSecurityEvent(
   userAgent: string,
   details: any
 ) {
-  return executeQuery(logger, 'create_security_event', async () => {
+  return executeSupabaseQuery(logger, 'create_security_event', async () => {
     const client = getSupabaseClient();
     return await client
       .from('security_events')
       .insert({
+        id: crypto.randomUUID(),
         user_id: userId,
         event_type: eventType,
         ip_address: ipAddress,
@@ -157,7 +200,7 @@ export async function getQuizQuestions(
   category?: string,
   limit: number = 100
 ) {
-  return executeQuery(logger, 'get_quiz_questions', async () => {
+  return executeSupabaseQuery(logger, 'get_quiz_questions', async () => {
     const client = getSupabaseClient();
     let query = client
       .from('quiz_questions')
@@ -166,7 +209,7 @@ export async function getQuizQuestions(
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (category) {
+    if (category && category !== 'all') {
       query = query.eq('category', category);
     }
 
@@ -174,8 +217,48 @@ export async function getQuizQuestions(
   });
 }
 
+export async function getQuizSessionsByUser(
+  logger: Logger,
+  userId: string,
+  category?: string,
+  limit: number = 50,
+  offset: number = 0
+) {
+  return executeSupabaseQuery(logger, 'get_quiz_sessions_by_user', async () => {
+    const client = getSupabaseClient();
+    let query = client
+      .from('quiz_sessions')
+      .select(`
+        *,
+        quiz_results (*)
+      `)
+      .eq('user_id', userId)
+      .order('started_at', { ascending: false })
+      .limit(limit)
+      .range(offset, offset + limit - 1);
+
+    if (category && category !== 'all') {
+      query = query.eq('category', category);
+    }
+
+    return await query;
+  });
+}
+
+export async function saveQuizResults(logger: Logger, results: any[]) {
+  return executeSupabaseQuery(logger, 'save_quiz_results', async () => {
+    const client = getSupabaseClient();
+    return await client
+      .from('quiz_results')
+      .upsert(results, {
+        onConflict: 'result_id',
+        ignoreDuplicates: false
+      });
+  });
+}
+
 export async function createQuizQuestion(logger: Logger, questionData: any) {
-  return executeQuery(logger, 'create_quiz_question', async () => {
+  return executeSupabaseQuery(logger, 'create_quiz_question', async () => {
     const client = getSupabaseClient();
     return await client
       .from('quiz_questions')
@@ -187,37 +270,6 @@ export async function createQuizQuestion(logger: Logger, questionData: any) {
       })
       .select()
       .single();
-  });
-}
-
-export async function getQuizSessionsByUser(
-  logger: Logger,
-  userId: string,
-  limit: number = 50
-) {
-  return executeQuery(logger, 'get_quiz_sessions_by_user', async () => {
-    const client = getSupabaseClient();
-    return await client
-      .from('quiz_sessions')
-      .select(`
-        *,
-        quiz_results (*)
-      `)
-      .eq('user_id', userId)
-      .order('started_at', { ascending: false })
-      .limit(limit);
-  });
-}
-
-export async function saveQuizResults(logger: Logger, results: any[]) {
-  return executeQuery(logger, 'save_quiz_results', async () => {
-    const client = getSupabaseClient();
-    return await client
-      .from('quiz_results')
-      .upsert(results, {
-        onConflict: 'id',
-        ignoreDuplicates: false
-      });
   });
 }
 

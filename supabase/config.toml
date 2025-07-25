@@ -1,9 +1,10 @@
-project_id = "brainy-backend"
+# Supabase local configuration file
+# See: https://supabase.com/docs/reference/cli/config
 
 [api]
 enabled = true
 port = 54321
-schemas = ["public", "storage", "graphql_public"]
+schemas = ["public", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
@@ -21,64 +22,89 @@ api_url = "http://localhost:54321"
 [inbucket]
 enabled = true
 port = 54324
-api_url = "http://localhost:54324"
 smtp_port = 54325
+pop3_port = 54326
 
 [storage]
 enabled = true
-port = 54326
-file_size_limit = "50MiB"
-bucket_id = "quiz-files"
+port = 54327
+image_transformation = { enabled = true }
+
+[edge_runtime]
+enabled = true
+port = 54328
 
 [auth]
 enabled = true
-port = 54327
+port = 54329
 site_url = "http://localhost:3000"
 additional_redirect_urls = ["https://localhost:3000"]
 jwt_expiry = 3600
 refresh_token_rotation_enabled = true
-security_refresh_token_reuse_interval = 10
-enable_signup = true
-enable_email_confirmations = false
-enable_email_change_confirmations = true
-enable_phone_confirmations = false
+secure_password_change_enabled = true
+enable_anonymous_sign_ins = false
 
 [auth.email]
 enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 
-[auth.external.apple]
-enabled = false
-client_id = ""
-secret = ""
+# ============================================================================
+# Edge Functions Configuration
+# ============================================================================
 
-[auth.external.google]
-enabled = false
-client_id = ""
-secret = ""
-
-[edge_runtime]
-enabled = true
-port = 54328
-
-[analytics]
-enabled = true
-port = 54329
-vector_port = 54330
-gw_port = 54331
-
-[functions.quiz-data]
-verify_jwt = true
-
-[functions.auth-enhanced]
+# Health Check Function
+[[edge_runtime.function]]
+name = "health"
 verify_jwt = false
 
-[functions.sync-progress]
+# Authentication Functions
+[[edge_runtime.function]]
+name = "auth-signup"
+verify_jwt = false
+
+[[edge_runtime.function]]
+name = "auth-signin"
+verify_jwt = false
+
+# Quiz Data Management
+[[edge_runtime.function]]
+name = "quiz-data"
 verify_jwt = true
 
-[functions.ai-generate]
+# Progress Synchronization
+[[edge_runtime.function]]
+name = "sync-progress"
 verify_jwt = true
 
-[functions.health]
-verify_jwt = false 
+# Leaderboard
+[[edge_runtime.function]]
+name = "leaderboard"
+verify_jwt = false
+
+# AI Quiz Generation
+[[edge_runtime.function]]
+name = "ai-generate"
+verify_jwt = true
+
+# ============================================================================
+# Storage Configuration
+# ============================================================================
+
+[storage.buckets.quiz-files]
+public = true
+file_size_limit = "10MB"
+allowed_mime_types = ["application/json", "text/plain", "audio/mpeg", "audio/wav", "image/jpeg", "image/png", "image/webp"]
+
+[storage.buckets.user-uploads]
+public = false
+file_size_limit = "5MB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]
+
+# ============================================================================
+# Experimental Features
+# ============================================================================
+
+[experimental]
+# Enable new features
+webhook_url = "http://localhost:54327/object/sign/quiz-files" 
