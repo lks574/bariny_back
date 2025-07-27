@@ -124,7 +124,7 @@ RETURNS TABLE (
     user_id UUID,
     push_token TEXT,
     last_login_at TIMESTAMP WITH TIME ZONE
-) AS $
+) AS $$
 BEGIN
     RETURN QUERY
     SELECT 
@@ -138,7 +138,7 @@ BEGIN
     AND u.last_login_at > NOW() - INTERVAL '1 day' * days_threshold
     AND u.auth_provider != 'guest';
 END;
-$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 사용자 푸시 토큰 업데이트 함수
 CREATE OR REPLACE FUNCTION update_user_push_token(
@@ -146,7 +146,7 @@ CREATE OR REPLACE FUNCTION update_user_push_token(
     push_token TEXT,
     device_info JSONB DEFAULT '{}'::jsonb
 )
-RETURNS BOOLEAN AS $
+RETURNS BOOLEAN AS $$
 BEGIN
     UPDATE users 
     SET 
@@ -160,7 +160,7 @@ BEGIN
     
     RETURN FOUND;
 END;
-$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 앱 동기화 로그 생성 함수
 CREATE OR REPLACE FUNCTION log_app_sync(
@@ -174,7 +174,7 @@ CREATE OR REPLACE FUNCTION log_app_sync(
     updates_applied JSONB DEFAULT '{}'::jsonb,
     device_info JSONB DEFAULT '{}'::jsonb
 )
-RETURNS UUID AS $
+RETURNS UUID AS $$
 DECLARE
     log_id UUID;
 BEGIN
@@ -190,7 +190,7 @@ BEGIN
     
     RETURN log_id;
 END;
-$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
 -- 마이그레이션 완료 로그
