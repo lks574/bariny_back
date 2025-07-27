@@ -26,7 +26,7 @@
   - User Permissions Table (권한 관리, 할당량 제어) 생성
   - 기존 테이블: quiz_questions, quiz_results, quiz_sessions, quiz_versions 생성
   - 성능 최적화 인덱스 및 제약조건 설정
-  - 강화된 Row Level Security (RLS) 정책 구현 (게스트, 관리자, 세션 기반)
+  - 강화된 Row Level Security (RLS) 정책 구현 (관리자, 세션 기반)
   - 데이터베이스 마이그레이션 스크립트 작성 및 버전 관리
   - 보안 감사를 위한 트리거 및 함수 구현
   - _Requirements: 1.11, 1.12, 3.1, 3.2, 8.5_

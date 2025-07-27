@@ -115,7 +115,7 @@ interface AuthStaticConfig {
   // 로그인 방식 제어
   auth_methods_enabled: string;           // "email,google,apple"
   social_login_required: boolean;         // 소셜 로그인 강제 여부
-  guest_mode_enabled: boolean;            // 게스트 모드 허용
+
   
   // 보안 설정
   password_min_length: number;            // 최소 비밀번호 길이
@@ -135,7 +135,7 @@ interface AuthStaticConfig {
 const authConfig: AuthStaticConfig = {
   auth_methods_enabled: "email,google,apple",
   social_login_required: false,
-  guest_mode_enabled: true,
+
   password_min_length: 8,
   session_timeout_minutes: 60,
   max_login_attempts: 5,
@@ -156,7 +156,7 @@ POST /auth/v1/logout              // 로그아웃
 GET  /auth/v1/user                // 사용자 정보 조회
 PUT  /auth/v1/user                // 사용자 정보 업데이트
 POST /auth/v1/password/reset      // 비밀번호 재설정
-POST /auth/v1/guest               // 게스트 로그인
+
 DELETE /auth/v1/account           // 계정 삭제
 ```
 
@@ -165,7 +165,7 @@ DELETE /auth/v1/account           // 계정 삭제
 interface AuthRequest {
   email?: string;
   password?: string;
-  provider?: 'email' | 'google' | 'apple' | 'guest';
+  provider?: 'email' | 'google' | 'apple';
   oauth_token?: string;
   device_info?: {
     device_id: string;
@@ -189,7 +189,7 @@ interface UserProfile {
   email: string;
   display_name: string;
   avatar_url?: string;
-  auth_provider: 'email' | 'google' | 'apple' | 'guest';
+  auth_provider: 'email' | 'google' | 'apple';
   is_verified: boolean;
   created_at: string;
   last_login_at: string;
@@ -267,20 +267,7 @@ class AuthManager: ObservableObject {
         return processAuthResponse(response)
     }
     
-    // 게스트 로그인
-    func signInAsGuest() async throws -> AuthResponse {
-        guard authConfig.guestModeEnabled else {
-            throw AuthError.guestModeDisabled
-        }
-        
-        let guestEmail = "guest_\(UUID().uuidString)@brainy.local"
-        let response = try await supabase.auth.signUp(
-            email: guestEmail,
-            password: generateRandomPassword()
-        )
-        
-        return processAuthResponse(response)
-    }
+
     
     // 자동 로그인 (저장된 세션)
     func autoSignIn() async {
@@ -336,7 +323,7 @@ interface EnhancedJWTPayload {
   // 기본 정보
   sub: string;                    // user_id
   email: string;
-  role: 'user' | 'admin' | 'guest';
+  role: 'user' | 'admin';
   
   // 세션 정보
   session_id: string;             // 세션 추적
