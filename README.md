@@ -121,10 +121,10 @@ deno task health
 - [x] 충돌 감지 및 해결 (서버 우선)
 - [x] 사용자별 진행 통계 계산
 - [x] 세션 및 결과 관리
-- [x] 실시간 sync 설정
+- [x] 앱 시작 시 동기화 설정
 
 ### 🏆 **리더보드 시스템 (100%)**
-- [x] 실시간 순위표
+- [x] 최신 순위표 (API 호출 시)
 - [x] 카테고리별/기간별 필터링
 - [x] 종합 점수 계산 알고리즘
 - [x] 사용자 개별 순위 조회
@@ -239,7 +239,7 @@ deno task leaderboard:test     # 리더보드 테스트
 ### 보안 모니터링
 - 로그인 시도 제한 (5회/시간)
 - 계정 잠금 메커니즘
-- 보안 이벤트 실시간 로깅
+- 보안 이벤트 로깅 및 모니터링
 - IP 주소 및 User-Agent 추적
 
 ### 데이터 보안
@@ -259,7 +259,7 @@ deno task leaderboard:test     # 리더보드 테스트
 - **지능형 캐싱**: 동일 요청 24시간 캐시로 **90% 비용 절감**
 - **일일 제한**: 사용자당 일일 10개 생성 제한
 - **관리자 승인**: 품질 관리로 무효한 생성 방지
-- **실시간 추적**: 토큰 사용량 및 비용 모니터링
+- **사용량 추적**: 토큰 사용량 및 비용 모니터링
 
 ### Supabase 효율적 사용
 - **PostgreSQL**: 강력한 관계형 데이터베이스
@@ -295,7 +295,7 @@ supabase storage cp config/app-config.json supabase://config/app-config.json
 # Supabase 로그 확인
 supabase functions logs --function-name health
 
-# 실시간 로그 스트리밍
+# 로그 스트리밍
 supabase functions logs --function-name ai-generate --follow
 ```
 
@@ -359,7 +359,7 @@ SELECT * FROM check_daily_generation_limit('user-uuid');
 1. **🔐 완전한 인증 시스템** - 다중 로그인 방식 지원
 2. **📊 퀴즈 데이터 관리** - 자동화된 정적 파일 배포
 3. **🔄 진행 상황 동기화** - 충돌 해결 및 오프라인 지원
-4. **🏆 리더보드 시스템** - 실시간 랭킹 및 통계
+4. **🏆 리더보드 시스템** - 최신 랭킹 및 통계
 5. **🤖 AI 퀴즈 생성** - 지능형 다국어 퀴즈 생성
 6. **🩺 모니터링 & 로깅** - 종합적인 시스템 관찰
 7. **🛠️ 인프라 & 설정** - 완전한 배포 준비 상태

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Brainy Backend API는 Supabase를 기반으로 구축되는 RESTful API 서비스입니다. PostgreSQL 데이터베이스와 실시간 기능을 활용하여 iOS 퀴즈 앱의 백엔드 요구사항을 충족합니다. 마이크로서비스 아키텍처를 적용하여 확장성과 유지보수성을 보장하며, 오프라인 우선 설계를 고려한 효율적인 데이터 동기화를 제공합니다.
+Brainy Backend API는 Supabase를 기반으로 구축되는 RESTful API 서비스입니다. PostgreSQL 데이터베이스를 활용하여 iOS 퀴즈 앱의 백엔드 요구사항을 충족합니다. 마이크로서비스 아키텍처를 적용하여 확장성과 유지보수성을 보장하며, 오프라인 우선 설계를 고려한 효율적인 데이터 동기화를 제공합니다.
 
 ## Architecture
 
@@ -40,8 +40,8 @@ Brainy Backend API는 Supabase를 기반으로 구축되는 RESTful API 서비�
 Frontend: iOS App (Swift 6 + SwiftUI)
 Backend: Supabase (PostgreSQL + Edge Functions)
 Authentication: Supabase Auth
-Real-time: Supabase Realtime
 Storage: Supabase Storage
+Push Notifications: Firebase Cloud Messaging (FCM)
 AI: OpenAI API
 Monitoring: Supabase Analytics
 Deployment: Supabase Cloud
@@ -909,36 +909,181 @@ CREATE POLICY "quiz_questions_admin_full" ON quiz_questions
   FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
 ```
 
-## Real-time Features
+## Local-First Architecture
 
-### Supabase Realtime Integration
+### Core Principles
+- **로컬 우선**: 모든 퀴즈 데이터, 결과, 히스토리는 로컬 저장
+- **수동 동기화**: 사용자가 동기화 버튼 클릭 시에만 서버 통신
+- **배치 처리**: 여러 퀴즈 결과를 한 번에 업로드
+- **최소 통신**: 필수적인 경우에만 네트워크 사용
 
-#### Real-time Subscriptions
+#### Local Data Management
 ```typescript
-// Quiz data updates
-const quizSubscription = supabase
-  .channel('quiz_updates')
-  .on('postgres_changes', {
-    event: 'UPDATE',
-    schema: 'public',
-    table: 'quiz_versions'
-  }, (payload) => {
-    // Notify clients of new quiz data
-  })
-  .subscribe();
+// 로컬 데이터 구조
+interface LocalAppData {
+  quiz_questions: QuizQuestion[];      // 모든 퀴즈 문제 (로컬 저장)
+  quiz_results: QuizResult[];          // 사용자 퀴즈 결과 (로컬 저장)
+  quiz_sessions: QuizSession[];        // 퀴즈 세션 기록 (로컬 저장)
+  user_stats: UserStats;               // 사용자 통계 (로컬 계산)
+  leaderboard: LeaderboardData;        // 리더보드 (하루 1회 갱신)
+  last_sync: string;                   // 마지막 동기화 시간
+  pending_sync: boolean;               // 동기화 대기 상태
+}
 
-// User progress updates
-const progressSubscription = supabase
-  .channel(`user_progress:${userId}`)
-  .on('postgres_changes', {
-    event: 'INSERT',
-    schema: 'public',
-    table: 'quiz_results',
-    filter: `user_id=eq.${userId}`
-  }, (payload) => {
-    // Update progress in real-time
-  })
-  .subscribe();
+// 앱 시작 시 - 로컬 데이터만 로드
+const initializeApp = async () => {
+  const localData = await loadLocalData();
+  
+  // 퀴즈 버전만 체크 (네트워크 사용 최소화)
+  const needsQuizUpdate = await checkQuizVersionOnly();
+  if (needsQuizUpdate) {
+    showUpdateAvailableNotification();
+  }
+  
+  return localData;
+};
+```
+
+#### Push Notification Integration
+```typescript
+// 중요한 업데이트는 푸시 알림으로 처리
+interface PushNotificationPayload {
+  type: 'quiz_update' | 'new_content' | 'achievement';
+  title: string;
+  body: string;
+  data: {
+    action: string;
+    payload: any;
+  };
+}
+
+// FCM을 통한 알림 발송
+const sendPushNotification = async (
+  userTokens: string[],
+  notification: PushNotificationPayload
+) => {
+  // Firebase Admin SDK를 통한 알림 발송
+};
+```
+
+#### Manual Sync Strategy
+
+##### 1. 퀴즈 플레이 - 완전 로컬
+```typescript
+// 퀴즈 완료 시 - 로컬에만 저장
+quiz_completed: {
+  trigger: 'onQuizSessionComplete',
+  actions: [
+    'saveToLocalStorage',   // 로컬 저장소에 결과 저장
+    'updateLocalStats',     // 로컬 통계 업데이트
+    'markPendingSync'       // 동기화 대기 상태로 표시
+  ],
+  network_required: false,  // 네트워크 불필요
+  immediate: true
+}
+
+// 퀴즈 시작 시 - 로컬 데이터만 사용
+quiz_started: {
+  trigger: 'onQuizSessionStart',
+  actions: [
+    'loadLocalQuestions',   // 로컬 문제 로드
+    'checkLocalProgress'    // 로컬 진행 상황 확인
+  ],
+  network_required: false,
+  immediate: true
+}
+```
+
+##### 2. 수동 동기화 버튼
+```typescript
+// 사용자가 동기화 버튼 클릭 시
+manual_sync: {
+  trigger: 'onSyncButtonClick',
+  priority: 'high',
+  actions: [
+    'uploadPendingResults', // 대기 중인 퀴즈 결과 업로드
+    'downloadLatestData',   // 최신 퀴즈 데이터 다운로드
+    'syncUserPreferences',  // 사용자 설정 동기화
+    'updateLeaderboard'     // 리더보드 갱신 (하루 1회만)
+  ],
+  network_required: true,
+  batch_processing: true,   // 배치로 처리
+  show_progress: true       // 진행률 표시
+}
+```
+
+##### 3. 화면별 로컬 데이터 표시
+```typescript
+// 리더보드 화면 - 로컬 캐시 데이터 표시
+leaderboard_view: {
+  trigger: 'onLeaderboardScreenEnter',
+  actions: [
+    'loadCachedLeaderboard', // 캐시된 리더보드 표시
+    'showLastUpdateTime',    // 마지막 업데이트 시간 표시
+    'showSyncButton'         // 수동 동기화 버튼 표시
+  ],
+  network_required: false,
+  cache_duration: 86400000  // 24시간 캐시
+}
+
+// 프로필 화면 - 로컬 통계 표시
+profile_view: {
+  trigger: 'onProfileScreenEnter',
+  actions: [
+    'calculateLocalStats',   // 로컬 데이터로 통계 계산
+    'showLocalAchievements', // 로컬 업적 표시
+    'displaySyncStatus'      // 동기화 상태 표시
+  ],
+  network_required: false,
+  real_time_calculation: true
+}
+
+// 히스토리 화면 - 로컬 기록 표시
+history_view: {
+  trigger: 'onHistoryScreenEnter',
+  actions: [
+    'loadLocalHistory',      // 로컬 퀴즈 기록 로드
+    'groupByDate',           // 날짜별 그룹화
+    'calculateStreaks'       // 연속 플레이 계산
+  ],
+  network_required: false,
+  pagination: true          // 페이지네이션으로 성능 최적화
+}
+```
+
+##### 4. 앱 시작 시 최소 통신
+```typescript
+// 앱 시작 시 - 필수 체크만
+app_launch: {
+  trigger: 'onAppLaunch',
+  actions: [
+    'loadLocalData',         // 로컬 데이터 우선 로드
+    'quickVersionCheck',     // 퀴즈 버전만 빠르게 체크
+    'showUpdateBadge'        // 업데이트 필요 시 배지 표시
+  ],
+  network_required: false,   // 오프라인도 동작
+  fallback_to_local: true,
+  timeout: 3000             // 3초 타임아웃
+}
+```
+
+##### 5. 리더보드 업데이트 정책
+```typescript
+// 리더보드 - 하루 1회만 업데이트
+leaderboard_update: {
+  frequency: 'daily',        // 하루 1회
+  trigger: 'manual_sync_only', // 수동 동기화 시에만
+  cache_policy: {
+    duration: 86400000,      // 24시간 캐시
+    show_age: true,          // 데이터 나이 표시
+    offline_fallback: true   // 오프라인 시 캐시 사용
+  },
+  update_conditions: [
+    'user_clicked_sync',     // 사용자가 동기화 클릭
+    'cache_expired',         // 캐시 만료
+    'first_launch_today'     // 오늘 첫 실행
+  ]
+}
 ```
 
 ## External Integrations
